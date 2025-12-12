@@ -2,23 +2,24 @@
 import { useState } from 'react'
 import Link from 'next/link'
 
-export default function RegisterPage(){
+export default function RegisterPage() {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     password: '',
     confirmPassword: ''
   })
+
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [acceptTerms, setAcceptTerms] = useState(false)
 
   const handleChange = (e) => {
-    setFormData({...formData, [e.target.name]: e.target.value})
+    setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
-  const onSubmit = async (e) => { 
+  const onSubmit = async (e) => {
     e.preventDefault()
     if (formData.password !== formData.confirmPassword) {
       alert('Passwords do not match!')
@@ -28,6 +29,7 @@ export default function RegisterPage(){
       alert('Please accept the terms and conditions')
       return
     }
+
     setIsLoading(true)
     setTimeout(() => {
       alert('Registration successful! (This is a UI demo)')
@@ -47,394 +49,196 @@ export default function RegisterPage(){
   const strength = passwordStrength()
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-12 relative overflow-hidden bg-black">
-      {/* Animated Background Gradients - More Intense */}
+    <div className="min-h-screen px-6 py-28 relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100">
+
+      {/* ---------------------------------- */}
+      {/* ✅ FIXED: Back to home under navbar */}
+      {/* ---------------------------------- */}
+      <div className="max-w-6xl mx-auto mb-6">
+        <Link 
+          href="/"
+          className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-all duration-300 group"
+        >
+          <span className="group-hover:-translate-x-1 transition-transform duration-300">←</span>
+          <span className="font-medium">Back to home</span>
+        </Link>
+      </div>
+
+      {/* Background Glow Elements */}
       <div className="absolute inset-0 -z-10">
         <div 
-          className="absolute top-20 right-20 w-[500px] h-[500px] rounded-full blur-[120px] animate-pulse-slow opacity-40"
+          className="absolute top-20 right-20 w-[500px] h-[500px] rounded-full blur-[120px] animate-pulse-slow opacity-30"
           style={{
-            background: 'radial-gradient(circle, rgba(14, 165, 233, 0.8) 0%, rgba(59, 130, 246, 0.4) 50%, transparent 100%)'
+            background: 'radial-gradient(circle, rgba(14,165,233,0.3), rgba(59,130,246,0.15), transparent)'
           }}
         />
         <div 
-          className="absolute bottom-20 left-20 w-[500px] h-[500px] rounded-full blur-[120px] animate-pulse-slow opacity-40"
+          className="absolute bottom-20 left-20 w-[500px] h-[500px] rounded-full blur-[120px] animate-pulse-slow opacity-30"
           style={{
-            background: 'radial-gradient(circle, rgba(139, 92, 246, 0.8) 0%, rgba(168, 85, 247, 0.4) 50%, transparent 100%)',
+            background: 'radial-gradient(circle, rgba(168,85,247,0.3), rgba(139,92,246,0.15), transparent)',
             animationDelay: '2s'
           }}
         />
         <div 
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[150px] animate-pulse-slow opacity-30"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[150px] animate-pulse-slow opacity-20"
           style={{
-            background: 'radial-gradient(circle, rgba(236, 72, 153, 0.6) 0%, rgba(219, 39, 119, 0.3) 50%, transparent 100%)',
+            background: 'radial-gradient(circle, rgba(236,72,153,0.25), rgba(219,39,119,0.1), transparent)',
             animationDelay: '1s'
           }}
         />
       </div>
 
-      <div className="w-full max-w-md relative z-10">
-        {/* Back Link */}
-        <Link 
-          href="/"
-          className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-8 transition-all duration-300 group"
-        >
-          <span className="group-hover:-translate-x-1 transition-transform duration-300">←</span>
-          <span className="font-medium">Back to home</span>
-        </Link>
+      {/* Centered Card */}
+      <div className="w-full max-w-md mx-auto relative z-10">
 
-        {/* Register Card with Gradient Top Glow */}
         <div className="relative group">
-          {/* Top Gradient Glow - Apple Style */}
+
+          {/* Top Glow */}
           <div 
-            className="absolute -top-px left-0 right-0 h-32 rounded-t-[2rem] opacity-60"
+            className="absolute -top-px left-0 right-0 h-32 rounded-t-[2rem] opacity-50"
             style={{
-              background: 'linear-gradient(180deg, rgba(14, 165, 233, 0.8) 0%, rgba(59, 130, 246, 0.6) 30%, transparent 100%)',
-              filter: 'blur(40px)'
+              background: 'linear-gradient(180deg, rgba(14,165,233,0.4), rgba(139,92,246,0.3), transparent)',
+              filter: 'blur(30px)'
             }}
           />
-          
+
           {/* Glassmorphism Card */}
           <div 
             className="relative rounded-[2rem] p-8 shadow-2xl overflow-hidden"
             style={{
-              background: 'rgba(255, 255, 255, 0.03)',
-              backdropFilter: 'blur(40px)',
-              WebkitBackdropFilter: 'blur(40px)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)'
+              background: 'rgba(255,255,255,0.7)',
+              backdropFilter: 'blur(40px) saturate(180%)',
+              border: '1px solid rgba(255,255,255,0.8)',
+              boxShadow: '0 8px 32px -8px rgba(0,0,0,0.12)'
             }}
           >
+
             {/* Header */}
             <div className="text-center mb-8">
               <div 
-                className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 relative overflow-hidden"
+                className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.8) 0%, rgba(139, 92, 246, 0.8) 100%)',
-                  backdropFilter: 'blur(20px)',
-                  boxShadow: '0 8px 32px rgba(14, 165, 233, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                  background: 'linear-gradient(135deg, #0ea5e9, #a855f7)',
+                  boxShadow: '0 8px 24px rgba(14,165,233,0.3)'
                 }}
               >
-                <span className="text-3xl relative z-10">✨</span>
-                <div 
-                  className="absolute inset-0 opacity-50"
-                  style={{
-                    background: 'radial-gradient(circle at top left, rgba(255, 255, 255, 0.3), transparent 70%)'
-                  }}
-                />
+                <span className="text-3xl">✨</span>
               </div>
-              <h2 className="text-3xl font-bold mb-2 text-white">
-                Create Account
-              </h2>
-              <p className="text-gray-400">Join us and start your journey</p>
+              <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
+              <p className="text-gray-600">Join us and start your journey</p>
             </div>
 
-            {/* Form */}
+            {/* FORM */}
             <form onSubmit={onSubmit} className="space-y-5">
-              {/* Full Name Field */}
+
+              {/* FULL NAME */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-300 block">Full Name</label>
-                <div className="relative group/input">
-                  <input 
-                    type="text"
-                    name="fullName"
-                    className="w-full px-4 py-3.5 rounded-xl text-white placeholder-gray-500 transition-all duration-300 focus:outline-none"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      backdropFilter: 'blur(20px)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                    }}
-                    placeholder="John Doe"
-                    value={formData.fullName} 
-                    onChange={handleChange}
-                    required
-                  />
-                  <div 
-                    className="absolute inset-0 rounded-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-300 pointer-events-none"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-                      border: '1px solid rgba(14, 165, 233, 0.3)',
-                    }}
-                  />
-                </div>
+                <label className="text-sm font-semibold text-gray-700">Full Name</label>
+                <input 
+                  type="text"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3.5 rounded-xl bg-white/60 border border-black/10 text-gray-900"
+                  placeholder="John Doe"
+                  required
+                />
               </div>
 
-              {/* Email Field */}
+              {/* EMAIL */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-300 block">Email Address</label>
-                <div className="relative group/input">
-                  <input 
-                    type="email"
-                    name="email"
-                    className="w-full px-4 py-3.5 rounded-xl text-white placeholder-gray-500 transition-all duration-300 focus:outline-none"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      backdropFilter: 'blur(20px)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                    }}
-                    placeholder="you@example.com"
-                    value={formData.email} 
-                    onChange={handleChange}
-                    required
-                  />
-                  <div 
-                    className="absolute inset-0 rounded-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-300 pointer-events-none"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-                      border: '1px solid rgba(14, 165, 233, 0.3)',
-                    }}
-                  />
-                </div>
+                <label className="text-sm font-semibold text-gray-700">Email Address</label>
+                <input 
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3.5 rounded-xl bg-white/60 border border-black/10 text-gray-900"
+                  placeholder="you@example.com"
+                  required
+                />
               </div>
 
-              {/* Password Field */}
+              {/* PASSWORD */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-300 block">Password</label>
-                <div className="relative group/input">
+                <label className="text-sm font-semibold text-gray-700">Password</label>
+                <div className="relative">
                   <input 
-                    type={showPassword ? "text" : "password"}
+                    type={showPassword ? 'text' : 'password'}
                     name="password"
-                    className="w-full px-4 py-3.5 rounded-xl text-white placeholder-gray-500 transition-all duration-300 focus:outline-none"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      backdropFilter: 'blur(20px)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                    }}
-                    placeholder="Create a strong password"
-                    value={formData.password} 
+                    value={formData.password}
                     onChange={handleChange}
+                    className="w-full px-4 py-3.5 rounded-xl bg-white/60 border border-black/10 text-gray-900"
+                    placeholder="Create a strong password"
                     required
                   />
                   <button
                     type="button"
+                    className="absolute right-4 top-1/2 -translate-y-1/2"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors duration-300 text-lg"
                   >
                     {showPassword ? '👁️' : '👁️‍🗨️'}
                   </button>
-                  <div 
-                    className="absolute inset-0 rounded-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-300 pointer-events-none"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-                      border: '1px solid rgba(14, 165, 233, 0.3)',
-                    }}
-                  />
                 </div>
-                
-                {/* Password Strength Indicator */}
-                {formData.password && (
-                  <div className="space-y-1 pt-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-400 font-medium">Password strength</span>
-                      <span className={`font-semibold ${
-                        strength.strength === 100 ? 'text-green-400' :
-                        strength.strength === 75 ? 'text-blue-400' :
-                        strength.strength === 50 ? 'text-yellow-400' :
-                        'text-red-400'
-                      }`}>{strength.label}</span>
-                    </div>
-                    <div 
-                      className="h-2 rounded-full overflow-hidden"
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        backdropFilter: 'blur(10px)'
-                      }}
-                    >
-                      <div 
-                        className={`h-full ${strength.color} transition-all duration-500 rounded-full relative overflow-hidden`}
-                        style={{width: `${strength.strength}%`}}
-                      >
-                        <div 
-                          className="absolute inset-0 opacity-50"
-                          style={{
-                            background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)',
-                            animation: 'shimmer 2s infinite'
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Confirm Password Field */}
+              {/* CONFIRM PASSWORD */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-300 block">Confirm Password</label>
-                <div className="relative group/input">
+                <label className="text-sm font-semibold text-gray-700">Confirm Password</label>
+                <div className="relative">
                   <input 
-                    type={showConfirmPassword ? "text" : "password"}
+                    type={showConfirmPassword ? 'text' : 'password'}
                     name="confirmPassword"
-                    className="w-full px-4 py-3.5 rounded-xl text-white placeholder-gray-500 transition-all duration-300 focus:outline-none"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      backdropFilter: 'blur(20px)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                    }}
-                    placeholder="Confirm your password"
-                    value={formData.confirmPassword} 
+                    value={formData.confirmPassword}
                     onChange={handleChange}
+                    className="w-full px-4 py-3.5 rounded-xl bg-white/60 border border-black/10 text-gray-900"
+                    placeholder="Confirm your password"
                     required
                   />
                   <button
                     type="button"
+                    className="absolute right-4 top-1/2 -translate-y-1/2"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors duration-300 text-lg"
                   >
                     {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
                   </button>
-                  <div 
-                    className="absolute inset-0 rounded-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-300 pointer-events-none"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-                      border: '1px solid rgba(14, 165, 233, 0.3)',
-                    }}
-                  />
                 </div>
-                {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                  <p className="text-xs text-red-400 font-medium flex items-center gap-1 pt-1">
-                    <span>⚠️</span> Passwords do not match
-                  </p>
-                )}
               </div>
 
-              {/* Terms Checkbox */}
-              <div className="flex items-start gap-3 pt-2">
+              {/* TERMS CHECKBOX */}
+              <div className="flex items-start gap-3 pt-1">
                 <input 
-                  type="checkbox" 
-                  id="terms"
+                  type="checkbox"
+                  className="mt-1 w-4 h-4"
                   checked={acceptTerms}
                   onChange={(e) => setAcceptTerms(e.target.checked)}
-                  className="mt-1 w-4 h-4 rounded border-white/20 bg-white/5 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-0 cursor-pointer"
                 />
-                <label htmlFor="terms" className="text-sm text-gray-300 leading-relaxed cursor-pointer">
-                  I agree to the{' '}
-                  <Link 
-                    href="/terms" 
-                    className="font-semibold transition-colors duration-300"
-                    style={{
-                      background: 'linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text'
-                    }}
-                  >
-                    Terms of Service
-                  </Link>
-                  {' '}and{' '}
-                  <Link 
-                    href="/privacy" 
-                    className="font-semibold transition-colors duration-300"
-                    style={{
-                      background: 'linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text'
-                    }}
-                  >
-                    Privacy Policy
-                  </Link>
+                <label className="text-sm text-gray-700">
+                  I agree to the Terms & Privacy Policy
                 </label>
               </div>
 
-              {/* Submit Button with Gradient Glow */}
-              <div className="relative pt-2">
-                {/* Button Glow Effect */}
-                <div 
-                  className="absolute inset-0 rounded-xl opacity-50 group-hover:opacity-70 transition-opacity duration-300 blur-xl"
-                  style={{
-                    background: 'linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 50%, #3b82f6 100%)',
-                  }}
-                />
-                
-                <button 
-                  type="submit"
-                  disabled={isLoading}
-                  className="relative w-full py-4 rounded-xl font-semibold text-white overflow-hidden transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed group"
-                  style={{
-                    background: 'linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 50%, #3b82f6 100%)',
-                    boxShadow: '0 4px 20px rgba(14, 165, 233, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-                  }}
-                >
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    {isLoading ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Creating account...
-                      </>
-                    ) : (
-                      <>
-                        Create Account
-                        <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
-                      </>
-                    )}
-                  </span>
-                </button>
-              </div>
+              {/* SUBMIT BUTTON */}
+              <button 
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-4 rounded-xl text-white font-semibold bg-gradient-to-r from-cyan-500 to-purple-500"
+              >
+                {isLoading ? "Creating..." : "Create Account"}
+              </button>
+
             </form>
 
-            {/* Divider */}
-            <div className="flex items-center gap-4 my-8">
-              <div 
-                className="flex-1 h-px"
-                style={{
-                  background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%)'
-                }}
-              />
-              <span className="text-sm text-gray-500 font-medium">OR</span>
-              <div 
-                className="flex-1 h-px"
-                style={{
-                  background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%)'
-                }}
-              />
-            </div>
-
-            {/* Login Link */}
-            <p className="text-center text-gray-400 text-sm mt-8">
-              Already have an account?{' '}
-              <Link 
-                href="/login" 
-                className="font-semibold transition-colors duration-300"
-                style={{
-                  background: 'linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text'
-                }}
-              >
-                Sign in
-              </Link>
+            {/* LOGIN LINK */}
+            <p className="text-center text-gray-600 text-sm mt-8">
+              Already have an account?{" "}
+              <Link href="/login" className="text-purple-600 font-semibold">Sign in</Link>
             </p>
 
-            {/* Bottom Inner Glow */}
-            <div 
-              className="absolute bottom-0 left-0 right-0 h-32 rounded-b-[2rem] pointer-events-none opacity-40"
-              style={{
-                background: 'radial-gradient(ellipse at bottom, rgba(139, 92, 246, 0.3) 0%, transparent 70%)'
-              }}
-            />
           </div>
         </div>
       </div>
 
-      <style jsx>{`
-        @keyframes pulse-slow {
-          0%, 100% { 
-            opacity: 0.3; 
-            transform: scale(1); 
-          }
-          50% { 
-            opacity: 0.5; 
-            transform: scale(1.1); 
-          }
-        }
-        .animate-pulse-slow {
-          animation: pulse-slow 6s ease-in-out infinite;
-        }
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-      `}</style>
     </div>
   )
 }
