@@ -6,19 +6,105 @@ export default function Page() {
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [isConnected, setIsConnected] = useState(true)
-  const [lastSender, setLastSender] = useState(null)
+  const [mounted, setMounted] = useState(false)
+  
+  // Voice feature states
+  const [isListening, setIsListening] = useState(false)
+  const [voiceSupported, setVoiceSupported] = useState(false)
+  
+  // Account dropdown state
+  const [showAccountMenu, setShowAccountMenu] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(true) // Set to true to show dropdown, false to hide
+  
   const messagesEndRef = useRef(null)
+  const chatContainerRef = useRef(null)
+  const recognitionRef = useRef(null)
+  const accountMenuRef = useRef(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   useEffect(() => {
-    // Only scroll when assistant is typing or sent the last message
-    if (isTyping || lastSender === 'assistant') {
+    if (mounted) {
       scrollToBottom()
     }
-  }, [messages, isTyping, lastSender])
+  }, [messages, isTyping, mounted])
+
+  // Voice recognition setup - browser only, no SSR
+  useEffect(() => {
+    if (typeof window === 'undefined' || !mounted) return
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    
+    if (SpeechRecognition) {
+      setVoiceSupported(true)
+      
+      const recognition = new SpeechRecognition()
+      recognition.continuous = false
+      recognition.interimResults = false
+      recognition.lang = 'en-US'
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript
+        setInput((prev) => prev ? prev + ' ' + transcript : transcript)
+      }
+
+      recognition.onend = () => {
+        setIsListening(false)
+      }
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error)
+        setIsListening(false)
+      }
+
+      recognitionRef.current = recognition
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
+    }
+  }, [mounted])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!mounted) return
+
+    const handleClickOutside = (event) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target)) {
+        setShowAccountMenu(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [mounted])
+
+  const toggleVoiceInput = () => {
+    if (!recognitionRef.current) return
+
+    if (isListening) {
+      recognitionRef.current.stop()
+      setIsListening(false)
+    } else {
+      recognitionRef.current.start()
+      setIsListening(true)
+    }
+  }
+
+  const handleLogout = () => {
+    // Add your logout logic here
+    alert('Logout clicked - add your logout logic here')
+    setIsAuthenticated(false)
+    setShowAccountMenu(false)
+  }
 
   const send = (e) => {
     e.preventDefault()
@@ -27,7 +113,6 @@ export default function Page() {
     const userMessage = input
     setMessages((m) => [...m, { role: 'user', text: userMessage }])
     setInput('')
-    setLastSender('user') // Mark user as last sender - no scroll
 
     if (!isConnected) {
       setTimeout(() => {
@@ -38,15 +123,12 @@ export default function Page() {
             text: 'Sorry, AI agent is not connected. Please check your connection and try again.',
           },
         ])
-        setLastSender('assistant') // Mark assistant as last sender - will scroll
       }, 500)
       return
     }
 
-    // Typing animation
     setIsTyping(true)
 
-    // Simulated API call
     setTimeout(() => {
       setIsTyping(false)
       setMessages((m) => [
@@ -56,84 +138,46 @@ export default function Page() {
           text: 'This is where the response from your AI agent will appear. I can help you with Oracle HCM, SCM, ERP, and Financials queries.',
         },
       ])
-      setLastSender('assistant') // Mark assistant as last sender - will scroll
-    }, 3000)
+    }, 2000)
   }
 
   const clearChat = () => {
     setMessages([])
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900 flex flex-col">
-      {/* Animated Background Gradients */}
-      <div className="fixed inset-0 -z-10 pointer-events-none">
-        <div 
-          className="absolute top-20 right-20 w-[400px] h-[400px] rounded-full blur-[120px] animate-pulse-slow opacity-20"
-          style={{
-            background: 'radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, rgba(139, 92, 246, 0.15) 50%, transparent 100%)'
-          }}
-        />
-        <div 
-          className="absolute bottom-20 left-20 w-[400px] h-[400px] rounded-full blur-[120px] animate-pulse-slow opacity-20"
-          style={{
-            background: 'radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, rgba(14, 165, 233, 0.15) 50%, transparent 100%)',
-            animationDelay: '2s'
-          }}
-        />
-      </div>
+  if (!mounted) {
+    return null
+  }
 
-      {/* Header with Glass Effect */}
-      <div 
-        className="border-b sticky top-0 z-10"
-        style={{
-          background: 'rgba(255, 255, 255, 0.7)',
-          backdropFilter: 'blur(30px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-          borderColor: 'rgba(0, 0, 0, 0.1)',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
-        }}
-      >
-        <div className="max-w-5xl mx-auto px-6 py-4">
+  return (
+    <div className="h-screen bg-white text-gray-900 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="border-b border-gray-200 z-10 bg-white flex-shrink-0">
+        <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div 
-                className="w-10 h-10 rounded-xl flex items-center justify-center"
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.9) 0%, rgba(59, 130, 246, 0.9) 100%)',
-                  boxShadow: '0 4px 12px rgba(168, 85, 247, 0.3)'
+                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)',
                 }}
               >
-                <span className="text-white font-bold text-lg">AI</span>
+                <span className="text-white font-bold text-[10px]">Oracle</span>
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-900">AI Oracle Assistant</h1>
-                <p className="text-xs text-gray-600">Your intelligent Oracle companion</p>
+                <h1 className="text-base font-semibold text-gray-900">Oracle AI Assistant</h1>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
               {/* Connection Status */}
-              <div 
-                className="flex items-center gap-2 px-3 py-2 rounded-xl"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.6)',
-                  backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(0, 0, 0, 0.08)',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
-                }}
-              >
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200">
                 <div
                   className={`w-2 h-2 rounded-full ${
                     isConnected ? 'bg-green-500' : 'bg-red-500'
                   }`}
-                  style={{
-                    boxShadow: isConnected 
-                      ? '0 0 8px rgba(34, 197, 94, 0.6)' 
-                      : '0 0 8px rgba(239, 68, 68, 0.6)'
-                  }}
                 />
-                <span className="text-xs font-medium text-gray-700">
+                <span className="text-xs font-medium text-gray-600">
                   {isConnected ? 'Connected' : 'Disconnected'}
                 </span>
               </div>
@@ -141,232 +185,220 @@ export default function Page() {
               {/* New Chat Button */}
               <button 
                 onClick={clearChat}
-                className="px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-300 hover:scale-105"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.6)',
-                  backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(0, 0, 0, 0.08)',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                  color: '#6b7280'
-                }}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-colors text-gray-700"
               >
                 New Chat
               </button>
+
+              {/* Account Dropdown - Only shows when authenticated */}
+              {isAuthenticated && (
+                <div className="relative" ref={accountMenuRef}>
+                  <button
+                    onClick={() => setShowAccountMenu(!showAccountMenu)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center">
+                      <span className="text-white text-xs font-semibold">JD</span>
+                    </div>
+                    <svg 
+                      width="16" 
+                      height="16" 
+                      viewBox="0 0 24 24" 
+                      fill="none"
+                      className={`text-gray-600 transition-transform ${showAccountMenu ? 'rotate-180' : ''}`}
+                    >
+                      <path 
+                        d="M6 9l6 6 6-6" 
+                        stroke="currentColor" 
+                        strokeWidth="2" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {showAccountMenu && (
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+                      {/* User Info */}
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center">
+                            <span className="text-white font-semibold">JD</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">John Doe</p>
+                            <p className="text-xs text-gray-500">john.doe@example.com</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Menu Items */}
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            alert('Navigate to /profile')
+                            setShowAccountMenu(false)
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          My Profile
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            alert('Navigate to /settings')
+                            setShowAccountMenu(false)
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          Settings
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            alert('Navigate to /billing')
+                            setShowAccountMenu(false)
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M2 10h20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          Billing
+                        </button>
+                      </div>
+
+                      {/* Logout */}
+                      <div className="border-t border-gray-100 pt-1">
+                        <button
+                          onClick={handleLogout}
+                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          Logout
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-5xl mx-auto px-6 py-8">
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="max-w-3xl mx-auto px-4 h-full">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-              {/* Welcome Card */}
-              <div 
-                className="p-8 rounded-3xl mb-6 max-w-md"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.7)',
-                  backdropFilter: 'blur(30px) saturate(180%)',
-                  WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-                  border: '1px solid rgba(255, 255, 255, 0.8)',
-                  boxShadow: '0 8px 32px -8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.6) inset'
-                }}
-              >
-                <div className="text-5xl mb-4">👋</div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome!</h2>
-                <p className="text-gray-600 leading-relaxed">
-                  I'm your AI Oracle Assistant. Ask me anything about HCM, SCM, ERP, or Financials.
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              {/* Welcome Section */}
+              <div className="mb-8">
+                <div 
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)',
+                  }}
+                >
+                  <span className="text-white font-bold text-sm">Oracle</span>
+                </div>
+                <h2 className="text-3xl font-semibold text-gray-900 mb-3">How can I help you today?</h2>
+                <p className="text-gray-600 text-base">
+                  Ask me anything about Oracle HCM, SCM, ERP, or Financials
                 </p>
               </div>
 
               {/* Suggestions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
                 {[
-                  'Show employee attrition trends',
-                  'Analyze supplier performance',
-                  'Generate financial reports',
-                  'Check inventory levels'
+                  { icon: '📊', text: 'Show employee attrition trends' },
+                  { icon: '🔗', text: 'Analyze supplier performance' },
+                  { icon: '📈', text: 'Generate financial reports' },
+                  { icon: '📦', text: 'Check inventory levels' }
                 ].map((suggestion, i) => (
                   <button
                     key={i}
-                    onClick={() => setInput(suggestion)}
-                    className="p-4 rounded-2xl text-left transition-all duration-300 hover:scale-105"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.6)',
-                      backdropFilter: 'blur(20px)',
-                      border: '1px solid rgba(0, 0, 0, 0.08)',
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
-                    }}
+                    onClick={() => setInput(suggestion.text)}
+                    className="p-4 rounded-xl text-left transition-all hover:bg-gray-50 border border-gray-200 hover:border-gray-300 group"
                   >
-                    <span className="text-sm font-medium text-gray-700">{suggestion}</span>
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl">{suggestion.icon}</span>
+                      <span className="text-sm text-gray-700 group-hover:text-gray-900">{suggestion.text}</span>
+                    </div>
                   </button>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="space-y-6 pb-6">
+            <div className="py-8">
               {messages.map((m, i) => (
                 <div
                   key={i}
-                  className={`flex ${
+                  className={`flex gap-4 mb-8 ${
                     m.role === 'user' ? 'justify-end' : 'justify-start'
                   }`}
                 >
-                  <div
-                    className={`flex gap-3 max-w-[85%] ${
-                      m.role === 'user' ? 'flex-row-reverse' : 'flex-row'
-                    }`}
-                  >
-                    {/* Avatar */}
+                  {m.role === 'assistant' && (
                     <div
-                      className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 font-bold text-sm`}
+                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
                       style={{
-                        background: m.role === 'user'
-                          ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.9) 0%, rgba(59, 130, 246, 0.9) 100%)'
-                          : 'rgba(255, 255, 255, 0.7)',
-                        backdropFilter: 'blur(20px)',
-                        border: m.role === 'assistant' ? '1px solid rgba(0, 0, 0, 0.08)' : 'none',
-                        boxShadow: m.role === 'user' 
-                          ? '0 4px 12px rgba(168, 85, 247, 0.3)' 
-                          : '0 2px 8px rgba(0, 0, 0, 0.04)',
-                        color: m.role === 'user' ? 'white' : '#6b7280'
+                        background: 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)',
                       }}
                     >
-                      {m.role === 'user' ? 'You' : 'AI'}
+                      <span className="text-white font-bold text-[8px]">Oracle</span>
                     </div>
+                  )}
 
-                    {/* Message Bubble */}
-                    <div
-                      className={`rounded-3xl px-5 py-4 ${
-                        m.role === 'user' ? '' : ''
-                      }`}
-                      style={{
-                        background: m.role === 'user'
-                          ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.9) 0%, rgba(59, 130, 246, 0.9) 100%)'
-                          : 'rgba(255, 255, 255, 0.7)',
-                        backdropFilter: 'blur(30px) saturate(180%)',
-                        WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-                        border: m.role === 'assistant' ? '1px solid rgba(0, 0, 0, 0.08)' : 'none',
-                        boxShadow: m.role === 'user'
-                          ? '0 4px 16px rgba(168, 85, 247, 0.25)'
-                          : '0 4px 16px rgba(0, 0, 0, 0.06)',
-                        color: m.role === 'user' ? 'white' : '#374151'
-                      }}
-                    >
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{m.text}</p>
-                    </div>
+                  <div className={`max-w-[70%] ${m.role === 'user' ? 'bg-gray-100 rounded-3xl px-5 py-3' : ''}`}>
+                    <p className="text-[15px] leading-7 text-gray-800 whitespace-pre-wrap">
+                      {m.text}
+                    </p>
                   </div>
+
+                  {m.role === 'user' && (
+                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 mt-1">
+                      <span className="text-white font-medium text-xs">You</span>
+                    </div>
+                  )}
                 </div>
               ))}
 
-              {/* Advanced AI Typing Indicator */}
+              {/* Professional Typing Indicator */}
               {isTyping && (
-                <div className="flex justify-start">
-                  <div className="flex gap-3 max-w-[85%]">
-                    {/* AI Avatar */}
-                    <div
-                      className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 font-bold text-sm"
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.7)',
-                        backdropFilter: 'blur(20px)',
-                        border: '1px solid rgba(0, 0, 0, 0.08)',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                        color: '#6b7280'
-                      }}
-                    >
-                      AI
-                    </div>
+                <div className="flex gap-4 mb-8">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)',
+                    }}
+                  >
+                    <span className="text-white font-bold text-[8px]">Oracle</span>
+                  </div>
 
-                    {/* Typing Animation Container */}
-                    <div className="flex items-center">
-                      <div className="relative flex items-center justify-center py-8 px-12">
-                        {/* Center glow core - pulsing */}
-                        <div 
-                          className="absolute w-16 h-16 rounded-full"
-                          style={{
-                            background: 'radial-gradient(circle, rgba(168, 85, 247, 0.8) 0%, rgba(59, 130, 246, 0.4) 50%, transparent 100%)',
-                            animation: 'pulse-core 2s ease-in-out infinite'
-                          }}
-                        />
-
-                        {/* Animated rings */}
-                        <div 
-                          className="absolute rounded-full border-2"
-                          style={{
-                            width: '100px',
-                            height: '100px',
-                            borderColor: 'rgba(168, 85, 247, 0.3)',
-                            animation: 'expand-ring 2s ease-out infinite'
-                          }}
-                        />
-
-                        <div 
-                          className="absolute rounded-full border-2"
-                          style={{
-                            width: '100px',
-                            height: '100px',
-                            borderColor: 'rgba(59, 130, 246, 0.3)',
-                            animation: 'expand-ring 2s ease-out infinite 0.6s'
-                          }}
-                        />
-
-                        <div 
-                          className="absolute rounded-full border-2"
-                          style={{
-                            width: '100px',
-                            height: '100px',
-                            borderColor: 'rgba(236, 72, 153, 0.3)',
-                            animation: 'expand-ring 2s ease-out infinite 1.2s'
-                          }}
-                        />
-
-                        {/* Rotating particles */}
-                        <div className="absolute w-32 h-32" style={{ animation: 'rotate-particles 4s linear infinite' }}>
-                          <div 
-                            className="absolute w-2 h-2 rounded-full top-0 left-1/2 -translate-x-1/2"
-                            style={{ background: 'rgba(168, 85, 247, 0.6)' }}
-                          />
-                          <div 
-                            className="absolute w-2 h-2 rounded-full bottom-0 left-1/2 -translate-x-1/2"
-                            style={{ background: 'rgba(59, 130, 246, 0.6)' }}
-                          />
-                          <div 
-                            className="absolute w-2 h-2 rounded-full left-0 top-1/2 -translate-y-1/2"
-                            style={{ background: 'rgba(236, 72, 153, 0.6)' }}
-                          />
-                          <div 
-                            className="absolute w-2 h-2 rounded-full right-0 top-1/2 -translate-y-1/2"
-                            style={{ background: 'rgba(14, 165, 233, 0.6)' }}
-                          />
-                        </div>
-
-                        {/* Center dots */}
-                        <div className="relative flex gap-1.5 z-10">
-                          <div 
-                            className="w-2 h-2 rounded-full"
-                            style={{
-                              background: 'rgba(168, 85, 247, 0.8)',
-                              animation: 'bounce-dot 1.4s ease-in-out infinite'
-                            }}
-                          />
-                          <div 
-                            className="w-2 h-2 rounded-full"
-                            style={{
-                              background: 'rgba(59, 130, 246, 0.8)',
-                              animation: 'bounce-dot 1.4s ease-in-out infinite 0.2s'
-                            }}
-                          />
-                          <div 
-                            className="w-2 h-2 rounded-full"
-                            style={{
-                              background: 'rgba(236, 72, 153, 0.8)',
-                              animation: 'bounce-dot 1.4s ease-in-out infinite 0.4s'
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-1 py-3">
+                    <div 
+                      className="w-2 h-2 rounded-full bg-gray-400"
+                      style={{ animation: 'bounce 1.4s ease-in-out infinite' }}
+                    />
+                    <div 
+                      className="w-2 h-2 rounded-full bg-gray-400"
+                      style={{ animation: 'bounce 1.4s ease-in-out 0.2s infinite' }}
+                    />
+                    <div 
+                      className="w-2 h-2 rounded-full bg-gray-400"
+                      style={{ animation: 'bounce 1.4s ease-in-out 0.4s infinite' }}
+                    />
                   </div>
                 </div>
               )}
@@ -377,107 +409,91 @@ export default function Page() {
         </div>
       </div>
 
-      {/* Input Area with Glass Effect */}
-      <div 
-        className="border-t sticky bottom-0"
-        style={{
-          background: 'rgba(255, 255, 255, 0.7)',
-          backdropFilter: 'blur(30px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-          borderColor: 'rgba(0, 0, 0, 0.1)',
-          boxShadow: '0 -1px 3px rgba(0, 0, 0, 0.05)'
-        }}
-      >
-        <div className="max-w-5xl mx-auto px-6 py-4">
-          <form onSubmit={send} className="flex gap-3">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="flex-1 px-5 py-3.5 rounded-2xl focus:outline-none transition-all text-gray-900 placeholder:text-gray-500"
-              style={{
-                background: 'rgba(255, 255, 255, 0.6)',
-                border: '1px solid rgba(0, 0, 0, 0.1)',
-                backdropFilter: 'blur(20px)',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
-              }}
-              placeholder="Ask me anything about Oracle..."
-            />
-            <button
-              type="submit"
-              className="px-8 py-3.5 rounded-2xl font-semibold text-white transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!input.trim()}
-              style={{
-                background: 'linear-gradient(135deg, #a855f7 0%, #3b82f6 100%)',
-                boxShadow: '0 4px 16px rgba(168, 85, 247, 0.3)'
-              }}
-            >
-              Send
-            </button>
+      {/* Input Area - Fixed at Bottom */}
+      <div className="border-t border-gray-200 bg-white flex-shrink-0">
+        <div className="max-w-3xl mx-auto px-4 py-4 pb-6">
+          <form onSubmit={send} className="relative">
+            <div className="relative flex items-center bg-white border border-gray-300 rounded-3xl shadow-sm hover:shadow-md transition-shadow focus-within:shadow-md focus-within:border-gray-400">
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="flex-1 px-5 py-3.5 bg-transparent rounded-3xl focus:outline-none text-gray-900 placeholder:text-gray-400"
+                placeholder="Message Oracle AI Assistant..."
+              />
+              
+              {/* Voice Input Button - Only shown if supported */}
+              {voiceSupported && (
+                <button
+                  type="button"
+                  onClick={toggleVoiceInput}
+                  className={`mr-2 p-2 rounded-full transition-all ${
+                    isListening 
+                      ? 'bg-red-100 hover:bg-red-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                  title={isListening ? 'Stop listening' : 'Start voice input'}
+                >
+                  <svg 
+                    width="20" 
+                    height="20" 
+                    viewBox="0 0 24 24" 
+                    fill="none"
+                    className={isListening ? 'text-red-500' : 'text-gray-600'}
+                  >
+                    <path 
+                      d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" 
+                      fill="currentColor"
+                    />
+                    <path 
+                      d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+              )}
+
+              <button
+                type="submit"
+                className="mr-2 p-2 rounded-full transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
+                disabled={!input.trim()}
+                style={{
+                  background: input.trim() ? 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)' : 'transparent',
+                }}
+              >
+                <svg 
+                  width="20" 
+                  height="20" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  className={input.trim() ? 'text-white' : 'text-gray-400'}
+                >
+                  <path 
+                    d="M7 11L12 6L17 11M12 18V7" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
           </form>
 
-          <p className="text-xs text-gray-500 text-center mt-3 font-medium">
-            AI can make mistakes. Check important information.
+          <p className="text-xs text-gray-500 text-center mt-3">
+            Oracle AI can make mistakes. Check important information.
           </p>
         </div>
       </div>
 
       <style jsx>{`
-        @keyframes pulse-slow {
-          0%, 100% { 
-            opacity: 0.15; 
-            transform: scale(1); 
-          }
-          50% { 
-            opacity: 0.25; 
-            transform: scale(1.05); 
-          }
-        }
-        .animate-pulse-slow {
-          animation: pulse-slow 8s ease-in-out infinite;
-        }
-
-        @keyframes pulse-core {
-          0%, 100% { 
-            transform: scale(1);
-            opacity: 0.8;
-          }
-          50% { 
-            transform: scale(1.2);
-            opacity: 1;
-          }
-        }
-
-        @keyframes expand-ring {
-          0% {
-            transform: scale(0.5);
-            opacity: 0;
-          }
-          50% {
-            opacity: 0.5;
-          }
-          100% {
-            transform: scale(2);
-            opacity: 0;
-          }
-        }
-
-        @keyframes rotate-particles {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
-        }
-
-        @keyframes bounce-dot {
-          0%, 80%, 100% {
+        @keyframes bounce {
+          0%, 60%, 100% {
             transform: translateY(0);
-            opacity: 0.8;
           }
-          40% {
+          30% {
             transform: translateY(-8px);
-            opacity: 1;
           }
         }
       `}</style>

@@ -37,9 +37,13 @@ export default function Navbar() {
 
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-600 to-cyan-400 
-                            flex items-center justify-center text-white font-bold">
-              AI
+            <div 
+              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
+              style={{
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)'
+              }}
+            >
+              <span className="text-white font-bold text-[11px]">Oracle</span>
             </div>
             <div className="text-lg font-semibold text-gray-900">AI Oracle Assistant</div>
           </div>
@@ -59,7 +63,10 @@ export default function Navbar() {
 
                 <Link 
                   href="/register"
-                  className="px-4 py-2 rounded-md bg-purple-600 text-white hover:brightness-110 transition"
+                  className="px-4 py-2 rounded-md text-white hover:brightness-110 transition"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)'
+                  }}
                 >
                   Register
                 </Link>
@@ -73,8 +80,10 @@ export default function Navbar() {
                 {/* Avatar button */}
                 <button
                   onClick={() => setMenuOpen(!menuOpen)}
-                  className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500
-                             flex items-center justify-center text-white font-semibold hover:scale-105 transition"
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold hover:scale-105 transition"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)'
+                  }}
                 >
                   {userInitial}
                 </button>

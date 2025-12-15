@@ -1,9 +1,21 @@
-export default function Footer(){
+export default function Footer() {
   const links = [
-    { label: 'Documentation', href: '/docs' },
-    { label: 'API', href: '/api' },
-    { label: 'Support', href: '/support' },
-    { label: 'Privacy', href: '/privacy' }
+    {
+      label: 'Documentation',
+      href: 'https://docs.oracle.com/en/'
+    },
+    {
+      label: 'API',
+      href: 'https://docs.oracle.com/en/cloud/saas/index.html'
+    },
+    {
+      label: 'Support',
+      href: 'https://support.oracle.com/'
+    },
+    {
+      label: 'Privacy',
+      href: 'https://www.oracle.com/legal/privacy/'
+    }
   ]
 
   return (
@@ -28,21 +40,22 @@ export default function Footer(){
         <div className="max-w-6xl mx-auto px-6 py-12">
           {/* Top Section */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            
             {/* Brand */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <div 
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-lg"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
                   style={{
                     background: 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)'
                   }}
                 >
-                  AI
+                  <span className="text-[10px]">Oracle</span>
                 </div>
                 <span className="font-semibold text-gray-900">AI Oracle Assistant</span>
               </div>
               <p className="text-gray-600 text-sm leading-relaxed">
-                Built for Oracle HCM/SCM/ERP/Financials integrations with AI-powered intelligence.
+                Built for Oracle HCM, SCM, ERP, and Financials integrations with AI-powered intelligence.
               </p>
             </div>
 
@@ -51,9 +64,11 @@ export default function Footer(){
               <h4 className="text-gray-900 font-semibold mb-3">Quick Links</h4>
               <div className="flex flex-col gap-2">
                 {links.map((link, i) => (
-                  <a 
+                  <a
                     key={i}
                     href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-gray-600 hover:text-purple-600 text-sm transition-all duration-300 hover:translate-x-1 inline-block font-medium"
                   >
                     {link.label}
@@ -102,9 +117,9 @@ export default function Footer(){
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-600">
             <p className="font-medium">© 2026 AI Oracle Assistant. All rights reserved.</p>
             <div className="flex items-center gap-6">
-              <a href="#" className="hover:text-purple-600 transition-colors duration-300 font-medium">Terms</a>
-              <a href="#" className="hover:text-purple-600 transition-colors duration-300 font-medium">Privacy</a>
-              <a href="#" className="hover:text-purple-600 transition-colors duration-300 font-medium">Cookies</a>
+              <a href="https://www.oracle.com/legal/terms.html" target="_blank" rel="noopener noreferrer" className="hover:text-purple-600 transition-colors duration-300 font-medium">Terms</a>
+              <a href="https://www.oracle.com/legal/privacy/" target="_blank" rel="noopener noreferrer" className="hover:text-purple-600 transition-colors duration-300 font-medium">Privacy</a>
+              <a href="https://www.oracle.com/legal/privacy/cookies.html" target="_blank" rel="noopener noreferrer" className="hover:text-purple-600 transition-colors duration-300 font-medium">Cookies</a>
             </div>
           </div>
         </div>

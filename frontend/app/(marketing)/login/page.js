@@ -53,7 +53,7 @@ export default function LoginPage(){
           <span className="font-medium">Back to home</span>
         </Link>
 
-        {/* Login Card with iOS Glass Effect */}
+        {/* Login Card with  Glass Effect */}
         <div className="relative group">
           {/* Top Gradient Glow - iOS Style */}
           <div 
@@ -64,7 +64,7 @@ export default function LoginPage(){
             }}
           />
           
-          {/* iOS Glassmorphism Card */}
+          {/*  Glassmorphism Card */}
           <div 
             className="relative rounded-[2rem] p-8 shadow-2xl overflow-hidden"
             style={{
@@ -114,7 +114,7 @@ export default function LoginPage(){
                       border: '1px solid rgba(0, 0, 0, 0.1)',
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
                     }}
-                    placeholder="you@example.com"
+                    placeholder="Demo@example.com"
                     value={email} 
                     onChange={e => setEmail(e.target.value)}
                     required
