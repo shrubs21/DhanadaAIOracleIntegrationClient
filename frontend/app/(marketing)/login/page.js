@@ -1,49 +1,101 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import toast from 'react-hot-toast'
 
 export default function LoginPage(){
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  const onSubmit = async (e) => { 
+  const onSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
-    setTimeout(() => {
-      alert('Login successful! (This is a UI demo)')
+
+    try {
+      const res = await fetch("http://localhost:4000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email,
+          password
+        })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data.error || "Invalid email or password")
+        setIsLoading(false)
+        return
+      }
+
+      localStorage.setItem("token", data.token)
+      toast.success("Welcome back! 🎉", { duration: 2000 })
+      
+      setTimeout(() => {
+        router.replace("/chat")
+      }, 800)
+
+    } catch (err) {
+      console.error('Login error:', err)
+      toast.error("Unable to connect to server")
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12 relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100">
-      {/* Animated Background Gradients - Soft & Elegant */}
+      
+      {/* Animated Background Gradients */}
       <div className="absolute inset-0 -z-10">
-        <div 
-          className="absolute top-20 left-20 w-[500px] h-[500px] rounded-full blur-[120px] animate-pulse-slow opacity-30"
+        <motion.div 
+          animate={{ 
+            scale: [1, 1.05, 1],
+            opacity: [0.25, 0.35, 0.25]
+          }}
+          transition={{ duration: 8, repeat: Infinity }}
+          className="absolute top-20 left-20 w-[500px] h-[500px] rounded-full blur-[120px]"
           style={{
             background: 'radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, rgba(139, 92, 246, 0.15) 50%, transparent 100%)'
           }}
         />
-        <div 
-          className="absolute bottom-20 right-20 w-[500px] h-[500px] rounded-full blur-[120px] animate-pulse-slow opacity-30"
+        <motion.div 
+          animate={{ 
+            scale: [1, 1.05, 1],
+            opacity: [0.25, 0.35, 0.25]
+          }}
+          transition={{ duration: 8, delay: 2, repeat: Infinity }}
+          className="absolute bottom-20 right-20 w-[500px] h-[500px] rounded-full blur-[120px]"
           style={{
-            background: 'radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, rgba(14, 165, 233, 0.15) 50%, transparent 100%)',
-            animationDelay: '2s'
+            background: 'radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, rgba(14, 165, 233, 0.15) 50%, transparent 100%)'
           }}
         />
-        <div 
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[150px] animate-pulse-slow opacity-20"
+        <motion.div 
+          animate={{ 
+            scale: [1, 1.05, 1],
+            opacity: [0.15, 0.25, 0.15]
+          }}
+          transition={{ duration: 8, delay: 1, repeat: Infinity }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[150px]"
           style={{
-            background: 'radial-gradient(circle, rgba(236, 72, 153, 0.25) 0%, rgba(219, 39, 119, 0.1) 50%, transparent 100%)',
-            animationDelay: '1s'
+            background: 'radial-gradient(circle, rgba(236, 72, 153, 0.25) 0%, rgba(219, 39, 119, 0.1) 50%, transparent 100%)'
           }}
         />
       </div>
 
-      <div className="w-full max-w-md relative z-10">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md relative z-10"
+      >
         {/* Back Link */}
         <Link 
           href="/"
@@ -53,9 +105,9 @@ export default function LoginPage(){
           <span className="font-medium">Back to home</span>
         </Link>
 
-        {/* Login Card with  Glass Effect */}
+        {/* Login Card */}
         <div className="relative group">
-          {/* Top Gradient Glow - iOS Style */}
+          {/* Top Gradient Glow */}
           <div 
             className="absolute -top-px left-0 right-0 h-32 rounded-t-[2rem] opacity-50"
             style={{
@@ -64,7 +116,7 @@ export default function LoginPage(){
             }}
           />
           
-          {/*  Glassmorphism Card */}
+          {/* Glassmorphism Card */}
           <div 
             className="relative rounded-[2rem] p-8 shadow-2xl overflow-hidden"
             style={{
@@ -114,10 +166,11 @@ export default function LoginPage(){
                       border: '1px solid rgba(0, 0, 0, 0.1)',
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
                     }}
-                    placeholder="Demo@example.com"
+                    placeholder="john@example.com"
                     value={email} 
                     onChange={e => setEmail(e.target.value)}
                     required
+                    disabled={isLoading}
                   />
                   <div 
                     className="absolute inset-0 rounded-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-300 pointer-events-none"
@@ -149,7 +202,7 @@ export default function LoginPage(){
                 <div className="relative group/input">
                   <input 
                     type={showPassword ? "text" : "password"}
-                    className="w-full px-4 py-3.5 rounded-xl text-gray-900 placeholder-gray-500 transition-all duration-300 focus:outline-none"
+                    className="w-full px-4 py-3.5 pr-12 rounded-xl text-gray-900 placeholder-gray-500 transition-all duration-300 focus:outline-none"
                     style={{
                       background: 'rgba(255, 255, 255, 0.6)',
                       backdropFilter: 'blur(20px)',
@@ -160,14 +213,18 @@ export default function LoginPage(){
                     value={password} 
                     onChange={e => setPassword(e.target.value)}
                     required
+                    disabled={isLoading}
                   />
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900 transition-colors duration-300 text-lg"
+                    disabled={isLoading}
                   >
                     {showPassword ? '👁️' : '👁️‍🗨️'}
-                  </button>
+                  </motion.button>
                   <div 
                     className="absolute inset-0 rounded-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-300 pointer-events-none"
                     style={{
@@ -184,15 +241,15 @@ export default function LoginPage(){
                   type="checkbox" 
                   id="remember"
                   className="w-4 h-4 rounded border-gray-300 bg-white text-purple-600 focus:ring-purple-500 focus:ring-offset-0 cursor-pointer"
+                  disabled={isLoading}
                 />
                 <label htmlFor="remember" className="ml-3 text-sm text-gray-700 cursor-pointer font-medium">
                   Remember me for 30 days
                 </label>
               </div>
 
-              {/* Submit Button with Gradient Glow */}
+              {/* Submit Button */}
               <div className="relative pt-2">
-                {/* Button Glow Effect */}
                 <div 
                   className="absolute inset-0 rounded-xl opacity-40 group-hover:opacity-60 transition-opacity duration-300 blur-xl"
                   style={{
@@ -200,10 +257,12 @@ export default function LoginPage(){
                   }}
                 />
                 
-                <button 
+                <motion.button 
+                  whileHover={{ scale: isLoading ? 1 : 1.02 }}
+                  whileTap={{ scale: isLoading ? 1 : 0.98 }}
                   type="submit"
                   disabled={isLoading}
-                  className="relative w-full py-4 rounded-xl font-semibold text-white overflow-hidden transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed group"
+                  className="relative w-full py-4 rounded-xl font-semibold text-white overflow-hidden transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group"
                   style={{
                     background: 'linear-gradient(135deg, #a855f7 0%, #8b5cf6 50%, #3b82f6 100%)',
                     boxShadow: '0 4px 20px rgba(168, 85, 247, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
@@ -222,7 +281,7 @@ export default function LoginPage(){
                       </>
                     )}
                   </span>
-                </button>
+                </motion.button>
               </div>
             </form>
 
@@ -260,15 +319,13 @@ export default function LoginPage(){
               </Link>
             </p>
 
-            {/* Top white inner glow */}
+            {/* Decorative glows */}
             <div 
               className="absolute top-0 left-0 right-0 h-32 rounded-t-[2rem] pointer-events-none opacity-40"
               style={{
                 background: 'radial-gradient(ellipse at top, rgba(255, 255, 255, 0.8) 0%, transparent 70%)'
               }}
             />
-            
-            {/* Bottom colored glow */}
             <div 
               className="absolute bottom-0 left-0 right-0 h-32 rounded-b-[2rem] pointer-events-none opacity-20"
               style={{
@@ -289,23 +346,7 @@ export default function LoginPage(){
             <span className="font-medium">GDPR Compliant</span>
           </div>
         </div>
-      </div>
-
-      <style jsx>{`
-        @keyframes pulse-slow {
-          0%, 100% { 
-            opacity: 0.25; 
-            transform: scale(1); 
-          }
-          50% { 
-            opacity: 0.35; 
-            transform: scale(1.05); 
-          }
-        }
-        .animate-pulse-slow {
-          animation: pulse-slow 8s ease-in-out infinite;
-        }
-      `}</style>
+      </motion.div>
     </div>
   )
 }

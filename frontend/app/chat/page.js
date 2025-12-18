@@ -1,11 +1,28 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
+import toast from 'react-hot-toast'
 
 export default function Page() {
+  const router = useRouter()
+
+  // ✅ SIMPLE TOKEN CHECK - REDIRECT IF NOT LOGGED IN
+  useEffect(() => {
+    const token = localStorage.getItem("token")
+    if (!token) {
+      router.replace("/login")
+    }
+  }, [router])
+
+  // Local auth state - NO CONTEXT
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
-  const [isConnected, setIsConnected] = useState(true)
+  const [isConnected, setIsConnected] = useState(false) // ✅ Changed to false by default
   const [mounted, setMounted] = useState(false)
   
   // Voice feature states
@@ -14,12 +31,66 @@ export default function Page() {
   
   // Account dropdown state
   const [showAccountMenu, setShowAccountMenu] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(true) // Set to true to show dropdown, false to hide
   
   const messagesEndRef = useRef(null)
   const chatContainerRef = useRef(null)
   const recognitionRef = useRef(null)
   const accountMenuRef = useRef(null)
+
+  // ✅ CHECK MCP CONNECTION STATUS
+  useEffect(() => {
+    // TODO: Replace this with actual MCP connection check
+    // Example: Check if MCP server is responding
+    const checkMCPConnection = async () => {
+      try {
+        // Replace with your actual MCP health check endpoint
+        // const response = await fetch('http://localhost:YOUR_MCP_PORT/health')
+        // if (response.ok) {
+        //   setIsConnected(true)
+        // }
+        
+        // For now, simulate connection after 2 seconds
+        setTimeout(() => {
+          setIsConnected(true) // ✅ Set to true when MCP connects
+          toast.success('AI Agent connected!')
+        }, 2000)
+      } catch (error) {
+        console.error('MCP connection failed:', error)
+        setIsConnected(false)
+        toast.error('Unable to connect to AI Agent')
+      }
+    }
+
+    if (mounted) {
+      checkMCPConnection()
+    }
+  }, [mounted])
+
+  // Fetch user directly from /me endpoint
+  useEffect(() => {
+    const token = localStorage.getItem("token")
+
+    if (!token) {
+      setLoading(false)
+      return
+    }
+
+    fetch("http://localhost:4000/api/auth/me", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        setUser(data)
+        setLoading(false)
+      })
+      .catch(() => {
+        localStorage.removeItem("token")
+        setUser(null)
+        setLoading(false)
+      })
+  }, [])
 
   useEffect(() => {
     setMounted(true)
@@ -99,11 +170,13 @@ export default function Page() {
     }
   }
 
+  // Logout handler - direct, no context
   const handleLogout = () => {
-    // Add your logout logic here
-    alert('Logout clicked - add your logout logic here')
-    setIsAuthenticated(false)
+    localStorage.removeItem("token")
+    setUser(null)
     setShowAccountMenu(false)
+    toast.success("Logged out successfully")
+    router.replace("/login")
   }
 
   const send = (e) => {
@@ -129,6 +202,7 @@ export default function Page() {
 
     setIsTyping(true)
 
+    // TODO: Replace this with actual MCP call
     setTimeout(() => {
       setIsTyping(false)
       setMessages((m) => [
@@ -143,7 +217,15 @@ export default function Page() {
 
   const clearChat = () => {
     setMessages([])
+    toast.success("Chat cleared")
   }
+
+  // Generate initials from user's first name (if user exists)
+  const initials = user?.firstName
+    ?.split(" ")
+    .map(n => n[0])
+    .join("")
+    .toUpperCase() || "U"
 
   if (!mounted) {
     return null
@@ -171,8 +253,13 @@ export default function Page() {
 
             <div className="flex items-center gap-3">
               {/* Connection Status */}
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200">
-                <div
+              <motion.div 
+                whileHover={{ scale: 1.02 }}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200"
+              >
+                <motion.div
+                  animate={{ scale: isConnected ? [1, 1.2, 1] : 1 }}
+                  transition={{ duration: 2, repeat: Infinity }}
                   className={`w-2 h-2 rounded-full ${
                     isConnected ? 'bg-green-500' : 'bg-red-500'
                   }`}
@@ -180,32 +267,38 @@ export default function Page() {
                 <span className="text-xs font-medium text-gray-600">
                   {isConnected ? 'Connected' : 'Disconnected'}
                 </span>
-              </div>
+              </motion.div>
 
               {/* New Chat Button */}
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={clearChat}
                 className="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-colors text-gray-700"
               >
                 New Chat
-              </button>
+              </motion.button>
 
-              {/* Account Dropdown - Only shows when authenticated */}
-              {isAuthenticated && (
+              {/* Account Dropdown - Only shows when user exists */}
+              {user && (
                 <div className="relative" ref={accountMenuRef}>
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setShowAccountMenu(!showAccountMenu)}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-colors"
                   >
                     <div className="w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center">
-                      <span className="text-white text-xs font-semibold">JD</span>
+                      <span className="text-white text-xs font-semibold">{initials}</span>
                     </div>
-                    <svg 
+                    <motion.svg 
+                      animate={{ rotate: showAccountMenu ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
                       width="16" 
                       height="16" 
                       viewBox="0 0 24 24" 
                       fill="none"
-                      className={`text-gray-600 transition-transform ${showAccountMenu ? 'rotate-180' : ''}`}
+                      className="text-gray-600"
                     >
                       <path 
                         d="M6 9l6 6 6-6" 
@@ -214,83 +307,95 @@ export default function Page() {
                         strokeLinecap="round" 
                         strokeLinejoin="round"
                       />
-                    </svg>
-                  </button>
+                    </motion.svg>
+                  </motion.button>
 
                   {/* Dropdown Menu */}
-                  {showAccountMenu && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
-                      {/* User Info */}
-                      <div className="px-4 py-3 border-b border-gray-100">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center">
-                            <span className="text-white font-semibold">JD</span>
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">John Doe</p>
-                            <p className="text-xs text-gray-500">john.doe@example.com</p>
+                  <AnimatePresence>
+                    {showAccountMenu && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50 overflow-hidden"
+                      >
+                        {/* User Info */}
+                        <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-br from-purple-50 to-blue-50">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center shadow-md">
+                              <span className="text-white font-semibold">{initials}</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">{user.firstName}</p>
+                              <p className="text-xs text-gray-600">{user.email}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Menu Items */}
-                      <div className="py-1">
-                        <button
-                          onClick={() => {
-                            alert('Navigate to /profile')
-                            setShowAccountMenu(false)
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                          My Profile
-                        </button>
+                        {/* Menu Items */}
+                        <div className="py-1">
+                          <motion.button
+                            whileHover={{ backgroundColor: 'rgba(249, 250, 251, 1)' }}
+                            onClick={() => {
+                              toast('Profile page coming soon!') // ✅ FIXED
+                              setShowAccountMenu(false)
+                            }}
+                            className="w-full px-4 py-2.5 text-left text-sm text-gray-700 flex items-center gap-3 transition-colors"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-purple-600">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium">My Profile</p>
+                              <p className="text-xs text-gray-500">View and edit profile</p>
+                            </div>
+                          </motion.button>
 
-                        <button
-                          onClick={() => {
-                            alert('Navigate to /settings')
-                            setShowAccountMenu(false)
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                          Settings
-                        </button>
+                          <motion.button
+                            whileHover={{ backgroundColor: 'rgba(249, 250, 251, 1)' }}
+                            onClick={() => {
+                              toast('Settings page coming soon!') // ✅ FIXED
+                              setShowAccountMenu(false)
+                            }}
+                            className="w-full px-4 py-2.5 text-left text-sm text-gray-700 flex items-center gap-3 transition-colors"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-blue-600">
+                                <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium">Settings</p>
+                              <p className="text-xs text-gray-500">Preferences & privacy</p>
+                            </div>
+                          </motion.button>
+                        </div>
 
-                        <button
-                          onClick={() => {
-                            alert('Navigate to /billing')
-                            setShowAccountMenu(false)
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M2 10h20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                          Billing
-                        </button>
-                      </div>
-
-                      {/* Logout */}
-                      <div className="border-t border-gray-100 pt-1">
-                        <button
-                          onClick={handleLogout}
-                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                          Logout
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                        {/* Logout */}
+                        <div className="border-t border-gray-100 mt-1 pt-1">
+                          <motion.button
+                            whileHover={{ backgroundColor: 'rgba(254, 242, 242, 1)' }}
+                            onClick={handleLogout}
+                            className="w-full px-4 py-2.5 text-left text-sm text-red-600 flex items-center gap-3 transition-colors"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-red-600">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium">Logout</p>
+                              <p className="text-xs text-red-400">Sign out of your account</p>
+                            </div>
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
             </div>
@@ -327,24 +432,29 @@ export default function Page() {
                   { icon: '📈', text: 'Generate financial reports' },
                   { icon: '📦', text: 'Check inventory levels' }
                 ].map((suggestion, i) => (
-                  <button
+                  <motion.button
                     key={i}
+                    whileHover={{ scale: 1.02, borderColor: 'rgba(156, 163, 175, 0.5)' }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setInput(suggestion.text)}
-                    className="p-4 rounded-xl text-left transition-all hover:bg-gray-50 border border-gray-200 hover:border-gray-300 group"
+                    className="p-4 rounded-xl text-left transition-all hover:bg-gray-50 border border-gray-200 group"
                   >
                     <div className="flex items-start gap-3">
                       <span className="text-xl">{suggestion.icon}</span>
                       <span className="text-sm text-gray-700 group-hover:text-gray-900">{suggestion.text}</span>
                     </div>
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
           ) : (
             <div className="py-8">
               {messages.map((m, i) => (
-                <div
+                <motion.div
                   key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
                   className={`flex gap-4 mb-8 ${
                     m.role === 'user' ? 'justify-end' : 'justify-start'
                   }`}
@@ -371,7 +481,7 @@ export default function Page() {
                       <span className="text-white font-medium text-xs">You</span>
                     </div>
                   )}
-                </div>
+                </motion.div>
               ))}
 
               {/* Professional Typing Indicator */}
@@ -423,7 +533,9 @@ export default function Page() {
               
               {/* Voice Input Button - Only shown if supported */}
               {voiceSupported && (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                   type="button"
                   onClick={toggleVoiceInput}
                   className={`mr-2 p-2 rounded-full transition-all ${
@@ -451,15 +563,17 @@ export default function Page() {
                       strokeLinecap="round"
                     />
                   </svg>
-                </button>
+                </motion.button>
               )}
 
-              <button
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 type="submit"
-                className="mr-2 p-2 rounded-full transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
+                className="mr-2 p-2 rounded-full transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 disabled={!input.trim()}
                 style={{
-                  background: input.trim() ? 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)' : 'transparent',
+                  background: input.trim() ? 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)' : 'rgba(249, 250, 251, 1)',
                 }}
               >
                 <svg 
@@ -477,7 +591,7 @@ export default function Page() {
                     strokeLinejoin="round"
                   />
                 </svg>
-              </button>
+              </motion.button>
             </div>
           </form>
 
