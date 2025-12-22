@@ -7,6 +7,4 @@ RUN npm install --production
 
 COPY . .
 
-EXPOSE 4000
-
-CMD ["node", "src/server.js"]
+CMD ["node", "src/workers/chat.worker.js"]

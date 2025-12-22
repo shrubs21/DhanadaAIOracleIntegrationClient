@@ -1,5 +1,4 @@
-import "dotenv/config"; // ✅ ESM-safe env loading
-
+import "dotenv/config";
 import pkg from "pg";
 const { Pool } = pkg;
 
@@ -9,18 +8,16 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: Number(process.env.DB_PORT),
-  ssl: false, // set to true for cloud DBs (Supabase, Neon, AWS)
+  ssl: false,
 });
 
-// Optional: log successful connection (once)
 pool.on("connect", () => {
-  console.log("PostgreSQL connected successfully");
+  console.log("✅ PostgreSQL connected successfully");
 });
 
-// Optional: catch unexpected errors
 pool.on("error", (err) => {
-  console.error("Unexpected PG error", err);
+  console.error("❌ Unexpected PostgreSQL error", err);
   process.exit(1);
 });
 
-export default pool;
+export default pool;  // ← MUST HAVE THIS
