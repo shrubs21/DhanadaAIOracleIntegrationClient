@@ -1,4 +1,4 @@
-import express from 'express';
+import express from "express"
 import {
   sendMessage,
   streamChat,
@@ -6,19 +6,22 @@ import {
   getConversations,
   getMessages,
   healthCheck
-} from '../controllers/chat.controller.js';
+} from "../controllers/chat.controller.js"
 
-import { authenticateToken } from '../middlewares/auth.middleware.js';
+import { authenticateToken } from "../middlewares/auth.middleware.js"
 
-const router = express.Router();
+const router = express.Router()
 
-router.use(authenticateToken);
+// ✅ PUBLIC (health checks should not require auth)
+router.get("/health", healthCheck)
 
-router.post('/send', sendMessage);
-router.get('/stream/:conversationId', streamChat);
-router.post('/conversations', createConversation);
-router.get('/conversations', getConversations);
-router.get('/conversations/:conversationId/messages', getMessages);
-router.get('/health', healthCheck);
+// 🔐 PROTECTED ROUTES
+router.use(authenticateToken)
 
-export default router;
+router.post("/send", sendMessage)
+router.get("/stream/:conversationId", streamChat)
+router.post("/conversations", createConversation)
+router.get("/conversations", getConversations)
+router.get("/conversations/:conversationId/messages", getMessages)
+
+export default router

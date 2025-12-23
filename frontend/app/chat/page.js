@@ -7,7 +7,6 @@ import toast from 'react-hot-toast'
 export default function Page() {
   const router = useRouter()
 
-  // ✅ SIMPLE TOKEN CHECK - REDIRECT IF NOT LOGGED IN
   useEffect(() => {
     const token = localStorage.getItem("token")
     if (!token) {
@@ -15,21 +14,19 @@ export default function Page() {
     }
   }, [router])
 
-  // Local auth state - NO CONTEXT
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
-  const [isConnected, setIsConnected] = useState(false) // ✅ Changed to false by default
+  const [isConnected, setIsConnected] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [conversationId, setConversationId] = useState(null)
   
-  // Voice feature states
   const [isListening, setIsListening] = useState(false)
   const [voiceSupported, setVoiceSupported] = useState(false)
   
-  // Account dropdown state
   const [showAccountMenu, setShowAccountMenu] = useState(false)
   
   const messagesEndRef = useRef(null)
@@ -37,36 +34,43 @@ export default function Page() {
   const recognitionRef = useRef(null)
   const accountMenuRef = useRef(null)
 
-  // ✅ CHECK MCP CONNECTION STATUS
+  // ✅ CHECK BACKEND CONNECTION WITH TOKEN
   useEffect(() => {
-    // TODO: Replace this with actual MCP connection check
-    // Example: Check if MCP server is responding
-    const checkMCPConnection = async () => {
+    const checkConnection = async () => {
       try {
-        // Replace with your actual MCP health check endpoint
-        // const response = await fetch('http://localhost:YOUR_MCP_PORT/health')
-        // if (response.ok) {
-        //   setIsConnected(true)
-        // }
+        const token = localStorage.getItem('token')
         
-        // For now, simulate connection after 2 seconds
-        setTimeout(() => {
-          setIsConnected(true) // ✅ Set to true when MCP connects
-          toast.success('AI Agent connected!')
-        }, 2000)
+        if (!token) {
+          setIsConnected(false)
+          return
+        }
+
+        const response = await fetch('http://localhost:4000/api/chat/health', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        if (response.ok) {
+          setIsConnected(true)
+          toast.success('Backend connected!')
+        } else {
+          setIsConnected(false)
+          toast.error('Unable to connect to backend')
+        }
       } catch (error) {
-        console.error('MCP connection failed:', error)
+        console.error('Backend connection failed:', error)
         setIsConnected(false)
-        toast.error('Unable to connect to AI Agent')
+        toast.error('Unable to connect to backend')
       }
     }
 
     if (mounted) {
-      checkMCPConnection()
+      checkConnection()
     }
   }, [mounted])
 
-  // Fetch user directly from /me endpoint
+  // Fetch user from /me endpoint
   useEffect(() => {
     const token = localStorage.getItem("token")
 
@@ -92,6 +96,14 @@ export default function Page() {
       })
   }, [])
 
+  // Load conversation ID from localStorage
+  useEffect(() => {
+    const savedConversationId = localStorage.getItem('currentConversationId')
+    if (savedConversationId) {
+      setConversationId(savedConversationId)
+    }
+  }, [])
+
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -106,7 +118,7 @@ export default function Page() {
     }
   }, [messages, isTyping, mounted])
 
-  // Voice recognition setup - browser only, no SSR
+  // Voice recognition setup
   useEffect(() => {
     if (typeof window === 'undefined' || !mounted) return
 
@@ -170,20 +182,44 @@ export default function Page() {
     }
   }
 
-  // Logout handler - direct, no context
   const handleLogout = () => {
     localStorage.removeItem("token")
+    localStorage.removeItem("currentConversationId")
     setUser(null)
     setShowAccountMenu(false)
     toast.success("Logged out successfully")
     router.replace("/login")
   }
 
-  const send = (e) => {
+  // ✅ CREATE CONVERSATION FUNCTION
+  async function createConversation() {
+    const token = localStorage.getItem("token")
+
+    const res = await fetch("http://localhost:4000/api/chat/conversations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ title: "New Conversation" })
+    })
+
+    if (!res.ok) {
+      throw new Error('Failed to create conversation')
+    }
+
+    return await res.json()
+  }
+
+  // ✅ COMPLETE FIXED SEND FUNCTION
+  const send = async (e) => {
     e.preventDefault()
     if (!input.trim()) return
 
     const userMessage = input
+    const token = localStorage.getItem('token')
+    
+    // Add user message to UI
     setMessages((m) => [...m, { role: 'user', text: userMessage }])
     setInput('')
 
@@ -193,34 +229,123 @@ export default function Page() {
           ...m,
           {
             role: 'assistant',
-            text: 'Sorry, AI agent is not connected. Please check your connection and try again.',
+            text: 'Sorry, backend is not connected. Please check your connection and try again.',
           },
         ])
       }, 500)
       return
     }
 
-    setIsTyping(true)
+    try {
+      // ✅ Step 1: Create conversation if needed
+      let currentConversationId = conversationId
+      
+      if (!currentConversationId) {
+        console.log('📝 Creating new conversation...')
+        const conv = await createConversation()
+        currentConversationId = conv.id
+        setConversationId(conv.id)
+        localStorage.setItem('currentConversationId', conv.id)
+        console.log('✅ Conversation created:', conv.id)
+      }
 
-    // TODO: Replace this with actual MCP call
-    setTimeout(() => {
+      // ✅ Step 2: Send message to backend (enqueue to Redis)
+      console.log('📨 Sending message to backend...')
+      const sendResponse = await fetch('http://localhost:4000/api/chat/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          prompt: userMessage,
+          conversationId: currentConversationId
+        })
+      })
+
+      if (!sendResponse.ok) {
+        throw new Error('Failed to send message')
+      }
+
+      console.log('✅ Message sent to queue')
+
+      // ✅ Step 3: Start SSE streaming with token in URL
+      console.log('📡 Starting SSE stream...')
+      const eventSource = new EventSource(
+        `http://localhost:4000/api/chat/stream/${currentConversationId}?token=${token}`
+      )
+
+      let assistantMessage = ''
+      let messageStarted = false
+      
+      setIsTyping(true)
+
+      eventSource.onmessage = (event) => {
+        const chunk = JSON.parse(event.data)
+        
+        if (chunk.done) {
+          console.log('✅ Stream complete')
+          setIsTyping(false)
+          eventSource.close()
+        } else {
+          // Add token to message
+          assistantMessage += chunk.token
+          
+          if (!messageStarted) {
+            messageStarted = true
+            setMessages((m) => [...m, { role: 'assistant', text: assistantMessage }])
+          } else {
+            // Update last message in real-time
+            setMessages((m) => {
+              const newMessages = [...m]
+              const lastMsg = newMessages[newMessages.length - 1]
+              if (lastMsg?.role === 'assistant') {
+                lastMsg.text = assistantMessage
+              }
+              return newMessages
+            })
+          }
+        }
+      }
+
+      eventSource.onerror = (error) => {
+        console.error('❌ SSE error:', error)
+        eventSource.close()
+        setIsTyping(false)
+        
+        if (!messageStarted) {
+          setMessages((m) => [
+            ...m,
+            {
+              role: 'assistant',
+              text: 'Sorry, there was an error receiving the response. Please try again.',
+            },
+          ])
+        }
+        toast.error('Connection error')
+      }
+
+    } catch (error) {
+      console.error('❌ Send error:', error)
       setIsTyping(false)
       setMessages((m) => [
         ...m,
         {
           role: 'assistant',
-          text: 'This is where the response from your AI agent will appear. I can help you with Oracle HCM, SCM, ERP, and Financials queries.',
+          text: 'Sorry, there was an error processing your request. Please try again.',
         },
       ])
-    }, 2000)
+      toast.error('Failed to send message')
+    }
   }
 
   const clearChat = () => {
     setMessages([])
-    toast.success("Chat cleared")
+    setConversationId(null)
+    localStorage.removeItem('currentConversationId')
+    toast.success("Chat cleared - new conversation will be created")
   }
 
-  // Generate initials from user's first name (if user exists)
   const initials = user?.firstName
     ?.split(" ")
     .map(n => n[0])
@@ -279,7 +404,7 @@ export default function Page() {
                 New Chat
               </motion.button>
 
-              {/* Account Dropdown - Only shows when user exists */}
+              {/* Account Dropdown */}
               {user && (
                 <div className="relative" ref={accountMenuRef}>
                   <motion.button
@@ -310,7 +435,6 @@ export default function Page() {
                     </motion.svg>
                   </motion.button>
 
-                  {/* Dropdown Menu */}
                   <AnimatePresence>
                     {showAccountMenu && (
                       <motion.div 
@@ -320,7 +444,6 @@ export default function Page() {
                         transition={{ duration: 0.2 }}
                         className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50 overflow-hidden"
                       >
-                        {/* User Info */}
                         <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-br from-purple-50 to-blue-50">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center shadow-md">
@@ -333,12 +456,11 @@ export default function Page() {
                           </div>
                         </div>
 
-                        {/* Menu Items */}
                         <div className="py-1">
                           <motion.button
                             whileHover={{ backgroundColor: 'rgba(249, 250, 251, 1)' }}
                             onClick={() => {
-                              toast('Profile page coming soon!') // ✅ FIXED
+                              toast('Profile page coming soon!')
                               setShowAccountMenu(false)
                             }}
                             className="w-full px-4 py-2.5 text-left text-sm text-gray-700 flex items-center gap-3 transition-colors"
@@ -357,7 +479,7 @@ export default function Page() {
                           <motion.button
                             whileHover={{ backgroundColor: 'rgba(249, 250, 251, 1)' }}
                             onClick={() => {
-                              toast('Settings page coming soon!') // ✅ FIXED
+                              toast('Settings page coming soon!')
                               setShowAccountMenu(false)
                             }}
                             className="w-full px-4 py-2.5 text-left text-sm text-gray-700 flex items-center gap-3 transition-colors"
@@ -375,7 +497,6 @@ export default function Page() {
                           </motion.button>
                         </div>
 
-                        {/* Logout */}
                         <div className="border-t border-gray-100 mt-1 pt-1">
                           <motion.button
                             whileHover={{ backgroundColor: 'rgba(254, 242, 242, 1)' }}
@@ -408,7 +529,6 @@ export default function Page() {
         <div className="max-w-3xl mx-auto px-4 h-full">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              {/* Welcome Section */}
               <div className="mb-8">
                 <div 
                   className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
@@ -424,7 +544,6 @@ export default function Page() {
                 </p>
               </div>
 
-              {/* Suggestions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
                 {[
                   { icon: '📊', text: 'Show employee attrition trends' },
@@ -484,7 +603,7 @@ export default function Page() {
                 </motion.div>
               ))}
 
-              {/* Professional Typing Indicator */}
+              {/* Typing Indicator */}
               {isTyping && (
                 <div className="flex gap-4 mb-8">
                   <div
@@ -519,7 +638,7 @@ export default function Page() {
         </div>
       </div>
 
-      {/* Input Area - Fixed at Bottom */}
+      {/* Input Area */}
       <div className="border-t border-gray-200 bg-white flex-shrink-0">
         <div className="max-w-3xl mx-auto px-4 py-4 pb-6">
           <form onSubmit={send} className="relative">
@@ -531,7 +650,6 @@ export default function Page() {
                 placeholder="Message Oracle AI Assistant..."
               />
               
-              {/* Voice Input Button - Only shown if supported */}
               {voiceSupported && (
                 <motion.button
                   whileHover={{ scale: 1.1 }}
