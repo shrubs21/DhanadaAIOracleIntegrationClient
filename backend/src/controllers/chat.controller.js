@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from "uuid"
 
 /**
  * POST /api/chat/send
+ * Queue a user message into Redis
  */
 export async function sendMessage(req, res) {
   try {
@@ -15,9 +16,7 @@ export async function sendMessage(req, res) {
       return res.status(400).json({ error: "Message cannot be empty" })
     }
 
-    /**
-     * 🔥 ENSURE CONVERSATION EXISTS
-     */
+    // ✅ Ensure conversation exists
     if (!conversationId) {
       conversationId = uuidv4()
 
@@ -37,19 +36,41 @@ export async function sendMessage(req, res) {
       }
     }
 
-    /**
-     * 🔥 PUSH TO REDIS QUEUE
-     */
-    await enqueueChatMessage({
-      conversationId,
-      userId,
-      prompt
-    })
+  // ✅ Push message into Redis queue
+await enqueueChatMessage({
+  conversationId,
+  userId,
+  prompt
+})
 
-    res.json({
-      status: "queued",
-      conversationId
-    })
+// 🔥 AUTO-UPDATE CONVERSATION TITLE (Claude-like)
+const smartTitle = prompt && prompt.trim().length
+  ? (prompt.trim().slice(0, 60) + (prompt.trim().length > 60 ? "..." : ""))
+  : "New Chat"
+
+// 🔥 Update title ONLY for first user message (ChatGPT/Claude style)
+await pool.query(
+  `
+  UPDATE conversations c
+  SET title = $2
+  WHERE c.id = $1
+  AND NOT EXISTS (
+    SELECT 1
+    FROM messages
+    WHERE conversation_id = c.id
+    AND role = 'user'
+  )
+  `,
+  [conversationId, smartTitle]
+)
+
+
+// ✅ Respond to UI
+res.json({
+  status: "queued",
+  conversationId
+})
+
 
   } catch (error) {
     console.error("❌ Send message error:", error)
@@ -59,6 +80,7 @@ export async function sendMessage(req, res) {
 
 /**
  * GET /api/chat/stream/:conversationId
+ * Server-Sent Events (AI streaming)
  */
 export async function streamChat(req, res) {
   const { conversationId } = req.params
@@ -115,16 +137,26 @@ export async function createConversation(req, res) {
 
 /**
  * GET /api/chat/conversations
+ * ✅ UPDATED: Now includes first_message for smart chat names
  */
 export async function getConversations(req, res) {
   try {
     const userId = req.user.id
 
     const result = await pool.query(
-      `SELECT id, title, created_at
-       FROM conversations
-       WHERE user_id = $1
-       ORDER BY created_at DESC`,
+      `SELECT 
+        c.id, 
+        c.title, 
+        c.created_at,
+        (SELECT content 
+         FROM messages 
+         WHERE conversation_id = c.id 
+         AND role = 'user' 
+         ORDER BY created_at ASC 
+         LIMIT 1) as first_message
+       FROM conversations c
+       WHERE c.user_id = $1
+       ORDER BY c.created_at DESC`,
       [userId]
     )
 

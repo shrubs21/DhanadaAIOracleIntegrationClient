@@ -1,23 +1,19 @@
-import "dotenv/config";
 import pkg from "pg";
 const { Pool } = pkg;
 
 const pool = new Pool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: Number(process.env.DB_PORT),
-  ssl: false,
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false, // required for Supabase
+  },
 });
 
 pool.on("connect", () => {
-  console.log("✅ PostgreSQL connected successfully");
+  console.log("✅ PostgreSQL connected (Supabase direct)");
 });
 
 pool.on("error", (err) => {
-  console.error("❌ Unexpected PostgreSQL error", err);
-  process.exit(1);
+  console.error("❌ PostgreSQL error:", err.message);
 });
 
-export default pool;  // ← MUST HAVE THIS
+export default pool;
