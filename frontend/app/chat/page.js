@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 
+// 🔥 Backend API URL from environment variable
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+
 // ✅ CODE BLOCK COMPONENT
 const CodeBlock = ({ code, language }) => {
   const [copied, setCopied] = useState(false)
@@ -214,7 +217,7 @@ export default function Page() {
   const loadConversations = useCallback(async () => {
     try {
       setLoadingHistory(true)
-      const res = await apiFetch('http://localhost:4000/api/chat/conversations')
+      const res = await apiFetch(`${API_URL}/api/chat/conversations`)
       if (res.ok) {
         const data = await res.json()
         setConversations(data)
@@ -230,7 +233,7 @@ export default function Page() {
   const loadConversation = useCallback(async (conversationId) => {
     try {
       const res = await apiFetch(
-        `http://localhost:4000/api/chat/conversations/${conversationId}/messages`
+        `${API_URL}/api/chat/conversations/${conversationId}/messages`
       )
       if (res.ok) {
         const data = await res.json()
@@ -264,7 +267,7 @@ export default function Page() {
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        const response = await fetch('http://localhost:4000/api/chat/health')
+        const response = await fetch(`${API_URL}/api/chat/health`)
         
         if (response.ok) {
           setIsConnected(true)
@@ -292,7 +295,7 @@ export default function Page() {
       return
     }
 
-    apiFetch("http://localhost:4000/api/auth/me")
+    apiFetch(`${API_URL}/api/auth/me`)
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
         setUser(data)
@@ -454,7 +457,7 @@ export default function Page() {
     const token = localStorage.getItem("token")
 
     const eventSource = new EventSource(
-      `http://localhost:4000/api/chat/stream/${conversationId}?token=${token}`
+      `${API_URL}/api/chat/stream/${conversationId}?token=${token}`
     )
 
     let assistantText = ""
@@ -503,7 +506,7 @@ export default function Page() {
       console.log("📨 Sending message to backend...")
       console.log("🆔 Current conversation ID:", currentConversationId)
 
-      const res = await apiFetch("http://localhost:4000/api/chat/send", {
+      const res = await apiFetch(`${API_URL}/api/chat/send`, {
         method: "POST",
         body: JSON.stringify({
           prompt,

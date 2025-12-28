@@ -4,6 +4,9 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext(null);
 
+// 🔥 Use environment variable for API URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,7 +19,7 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    fetch("http://localhost:4000/api/auth/me", {
+    fetch(`${API_URL}/api/auth/me`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
