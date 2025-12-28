@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 
+// 🔥 Backend API URL from environment variable  
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+
 export default function LoginPage(){
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -17,7 +20,7 @@ export default function LoginPage(){
     setIsLoading(true)
 
     try {
-      const res = await fetch("http://localhost:4000/api/auth/login", {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
