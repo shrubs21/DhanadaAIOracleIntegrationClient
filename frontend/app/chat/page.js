@@ -51,9 +51,22 @@ const CodeBlock = ({ code, language }) => {
   )
 }
 
-// ✅ MESSAGE COMPONENT WITH ACTIONS
-const Message = ({ message, index, onCopy, onRetry, onDelete }) => {
+// ✅ MESSAGE COMPONENT WITH ACTIONS (including Voice)
+const Message = ({ message, index, onCopy, onRetry, onDelete, onShare, onExport, onReadAloud }) => {
   const [showActions, setShowActions] = useState(false)
+
+  // 🔥 Detect if message contains table data
+  const hasTable = (text) => {
+    return text.includes('|') && text.split('\n').filter(line => line.includes('|')).length > 2
+  }
+
+  // 🔥 Detect export type based on content
+  const getExportType = (text) => {
+    if (hasTable(text)) return 'excel'
+    return 'pdf'
+  }
+
+  const exportType = message.role === 'assistant' ? getExportType(message.text) : null
 
   const renderContent = (text) => {
     const parts = text.split(/(```[\s\S]*?```)/g)
@@ -121,6 +134,54 @@ const Message = ({ message, index, onCopy, onRetry, onDelete }) => {
                   <path d="M16 18v2a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2h2" stroke="currentColor" strokeWidth="2"/>
                 </svg>
               </button>
+              
+              {/* 🔥 NEW: Read Aloud Button (Voice) */}
+              {message.role === 'assistant' && (
+                <button
+                  onClick={() => onReadAloud(message.text)}
+                  className="p-1.5 hover:bg-purple-50 rounded transition-colors"
+                  title="Read Aloud"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-purple-600">
+                    <path d="M11 5L6 9H2v6h4l5 4V5zM19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              )}
+              
+              {/* Share Button */}
+              {message.role === 'assistant' && (
+                <button
+                  onClick={() => onShare(message.text)}
+                  className="p-1.5 hover:bg-blue-50 rounded transition-colors"
+                  title="Share"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-blue-600">
+                    <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              )}
+              
+              {/* Export Button (PDF/Excel) */}
+              {message.role === 'assistant' && (
+                <button
+                  onClick={() => onExport(message.text, exportType)}
+                  className="p-1.5 hover:bg-green-50 rounded transition-colors"
+                  title={`Export as ${exportType === 'excel' ? 'Excel' : 'PDF'}`}
+                >
+                  {exportType === 'excel' ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-green-600">
+                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M14 2v6h6M8 13h8M8 17h8M8 9h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-red-600">
+                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </button>
+              )}
+              
               {message.role === 'assistant' && (
                 <button
                   onClick={() => onRetry(index)}
@@ -181,16 +242,22 @@ export default function Page() {
   const [showAccountMenu, setShowAccountMenu] = useState(false)
   const [isAtBottom, setIsAtBottom] = useState(true)
   
-  // ✅ NEW: Chat history state
+  // ✅ Chat history state
   const [conversations, setConversations] = useState([])
   const [currentConversationId, setCurrentConversationId] = useState(null)
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [showSidebar, setShowSidebar] = useState(true)
   
+  // 🔥 NEW: Search and Pin state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [pinnedChats, setPinnedChats] = useState([])
+  const [isReading, setIsReading] = useState(false)
+  
   const messagesEndRef = useRef(null)
   const chatContainerRef = useRef(null)
   const recognitionRef = useRef(null)
   const accountMenuRef = useRef(null)
+  const speechSynthesisRef = useRef(null)
 
   async function apiFetch(url, options = {}) {
     const token = localStorage.getItem('token')
@@ -213,7 +280,100 @@ export default function Page() {
     return response
   }
 
-  // ✅ NEW: Load chat history
+  // 🔥 NEW: Text-to-Speech function
+  const handleReadAloud = useCallback((text) => {
+    if (!('speechSynthesis' in window)) {
+      toast.error('Text-to-speech not supported in your browser')
+      return
+    }
+
+    // Stop any ongoing speech
+    if (speechSynthesis.speaking) {
+      speechSynthesis.cancel()
+      setIsReading(false)
+      toast.success('Stopped reading')
+      return
+    }
+
+    // Clean text (remove code blocks and markdown)
+    const cleanText = text
+      .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+      .replace(/[*_`#]/g, '') // Remove markdown
+      .replace(/\|/g, '') // Remove table pipes
+      .replace(/\n+/g, '. ') // Replace newlines with periods
+      .trim()
+
+    if (!cleanText) {
+      toast.error('No text to read')
+      return
+    }
+
+    const utterance = new SpeechSynthesisUtterance(cleanText)
+    
+    // Configure voice settings
+    utterance.rate = 0.9 // Slightly slower for clarity
+    utterance.pitch = 1.0
+    utterance.volume = 1.0
+    
+    // Get available voices and prefer English ones
+    const voices = speechSynthesis.getVoices()
+    const englishVoice = voices.find(voice => 
+      voice.lang.startsWith('en') && voice.name.includes('Female')
+    ) || voices.find(voice => voice.lang.startsWith('en'))
+    
+    if (englishVoice) {
+      utterance.voice = englishVoice
+    }
+
+    utterance.onstart = () => {
+      setIsReading(true)
+      toast.success('Reading message...', { icon: '🔊' })
+    }
+
+    utterance.onend = () => {
+      setIsReading(false)
+    }
+
+    utterance.onerror = () => {
+      setIsReading(false)
+      toast.error('Failed to read message')
+    }
+
+    speechSynthesis.speak(utterance)
+  }, [])
+
+  // 🔥 NEW: Load pinned chats from localStorage
+  useEffect(() => {
+    const savedPins = localStorage.getItem('pinnedChats')
+    if (savedPins) {
+      setPinnedChats(JSON.parse(savedPins))
+    }
+  }, [])
+
+  // 🔥 NEW: Toggle pin chat
+  const handleTogglePin = useCallback((conversationId) => {
+    setPinnedChats(prev => {
+      const newPins = prev.includes(conversationId)
+        ? prev.filter(id => id !== conversationId)
+        : [...prev, conversationId]
+      
+      localStorage.setItem('pinnedChats', JSON.stringify(newPins))
+      toast.success(newPins.includes(conversationId) ? 'Chat pinned' : 'Chat unpinned')
+      return newPins
+    })
+  }, [])
+
+  // 🔥 NEW: Filter conversations based on search
+  const filteredConversations = useCallback(() => {
+    if (!searchQuery.trim()) return conversations
+
+    return conversations.filter(conv => {
+      const title = conv.title || conv.first_message || 'New Chat'
+      return title.toLowerCase().includes(searchQuery.toLowerCase())
+    })
+  }, [conversations, searchQuery])
+
+  // ✅ Load chat history
   const loadConversations = useCallback(async () => {
     try {
       setLoadingHistory(true)
@@ -229,7 +389,7 @@ export default function Page() {
     }
   }, [])
 
-  // ✅ NEW: Load messages for a conversation
+  // ✅ Load messages for a conversation
   const loadConversation = useCallback(async (conversationId) => {
     try {
       const res = await apiFetch(
@@ -255,14 +415,8 @@ export default function Page() {
   useEffect(() => {
     if (mounted && user) {
       loadConversations()
-      
-      // ✅ Load last conversation if exists
-      const savedId = localStorage.getItem('currentConversationId')
-      if (savedId) {
-        loadConversation(savedId)
-      }
     }
-  }, [mounted, user, loadConversations, loadConversation])
+  }, [mounted, user, loadConversations])
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -434,6 +588,63 @@ export default function Page() {
     toast.success('Message copied!')
   }, [])
 
+  const handleShareMessage = useCallback(async (text) => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Oracle AI Chat',
+          text: text
+        })
+        toast.success('Shared successfully!')
+      } else {
+        navigator.clipboard.writeText(text)
+        toast.success('Content copied to clipboard!')
+      }
+    } catch (error) {
+      console.error('Share failed:', error)
+      toast.error('Share failed')
+    }
+  }, [])
+
+  const handleExportMessage = useCallback(async (text, type) => {
+    const loadingToast = toast.loading(`Generating ${type.toUpperCase()}...`)
+    
+    try {
+      const response = await apiFetch(`${API_URL}/api/export/${type}`, {
+        method: 'POST',
+        body: JSON.stringify({ content: text })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.statusText}`)
+      }
+
+      const contentDisposition = response.headers.get('Content-Disposition')
+      let filename = `oracle-export.${type === 'excel' ? 'xlsx' : 'pdf'}`
+      if (contentDisposition) {
+        const matches = /filename="?([^"]+)"?/.exec(contentDisposition)
+        if (matches && matches[1]) {
+          filename = matches[1]
+        }
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast.success(`${type.toUpperCase()} downloaded successfully!`, { id: loadingToast })
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error(`Failed to export ${type.toUpperCase()}`, { id: loadingToast })
+    }
+  }, [])
+
   const handleRetryMessage = useCallback((messageIndex) => {
     if (messageIndex > 0) {
       const prevMessages = messages.slice(0, messageIndex)
@@ -469,11 +680,14 @@ export default function Page() {
       if (!data.done) {
         assistantText += data.token
         updateLastBotMessage(assistantText)
+        
+        if (assistantText.length > 0 && assistantText.length < 10) {
+          loadConversations()
+        }
       } else {
         console.log("✅ Stream complete")
         setIsTyping(false)
         eventSource.close()
-        // 🔥 CRITICAL: Force refresh sidebar to show updated title from DB
         setTimeout(() => loadConversations(), 500)
       }
     }
@@ -510,7 +724,7 @@ export default function Page() {
         method: "POST",
         body: JSON.stringify({
           prompt,
-          conversationId: currentConversationId || localStorage.getItem("currentConversationId")
+          conversationId: currentConversationId
         })
       })
 
@@ -521,11 +735,9 @@ export default function Page() {
       const data = await res.json()
       console.log("🆔 Backend returned conversation ID:", data.conversationId)
 
-      // 🔥 select the real conversation returned by backend FIRST
       setCurrentConversationId(data.conversationId)
       localStorage.setItem("currentConversationId", data.conversationId)
 
-      // 🔥 reload sidebar from DB (removes "New Chat")
       await loadConversations()
 
       console.log("✅ Message sent to queue")
@@ -558,7 +770,6 @@ export default function Page() {
     sendMessage(userMessage)
   }
 
-  // ✅ NEW: Clear chat and start new conversation
   const handleNewChat = () => {
     setMessages([])
     setCurrentConversationId(null)
@@ -576,9 +787,14 @@ export default function Page() {
     return null
   }
 
+  // Separate pinned and regular chats
+  const filtered = filteredConversations()
+  const pinnedConversations = filtered.filter(conv => pinnedChats.includes(conv.id))
+  const regularConversations = filtered.filter(conv => !pinnedChats.includes(conv.id))
+
   return (
     <div className="h-screen bg-white text-gray-900 flex overflow-hidden">
-      {/* ✅ SIDEBAR WITH CHAT HISTORY */}
+      {/* ✅ ENHANCED SIDEBAR */}
       <AnimatePresence>
         {showSidebar && (
           <motion.div
@@ -588,17 +804,8 @@ export default function Page() {
             transition={{ duration: 0.3 }}
             className="border-r border-gray-200 flex flex-col bg-gray-50 overflow-hidden"
           >
-            {/* Sidebar Header */}
+            {/* Sidebar Header - NEW CHAT BUTTON */}
             <div className="p-4 border-b border-gray-200">
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center mx-auto mb-3"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)',
-                }}
-              >
-                <span className="text-white font-bold text-xs">Oracle</span>
-              </div>
-              
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -612,66 +819,152 @@ export default function Page() {
               </motion.button>
             </div>
 
-            {/* Chat History List */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 mb-2">
-                Chat History
+            {/* 🔥 NEW: SEARCH BAR */}
+            <div className="p-3 border-b border-gray-200">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search chats..."
+                  className="w-full px-3 py-2 pl-9 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100"
+                />
+                <svg
+                  className="absolute left-3 top-2.5 text-gray-400"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
               </div>
-              
-              {loadingHistory ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
-                </div>
-              ) : conversations.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 text-sm">
-                  No conversations yet
-                </div>
-              ) : (
-                conversations.map((conv) => {
-                  // 🔥 FIX: Prefer first_message over 'New Chat' title (async timing)
-                  const displayTitle =
-                    conv.title && conv.title !== "New Chat"
+            </div>
+
+            {/* Chat History List */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-4">
+              {/* 🔥 PINNED CHATS SECTION */}
+              {pinnedConversations.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 mb-2">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M16 12V4h1a1 1 0 000-2H7a1 1 0 000 2h1v8l-2 2v2h5.586l-1.293 1.293a1 1 0 101.414 1.414L16 14.414l4.293 4.293a1 1 0 001.414-1.414L20.414 16H22v-2l-2-2h-4zm-2 0H10V4h4v8z"/>
+                    </svg>
+                    Pinned
+                  </div>
+                  {pinnedConversations.map((conv) => {
+                    const displayTitle = conv.title && conv.title !== "New Chat"
                       ? conv.title
-                      : conv.first_message || "New Chat";
-                  
-                  return (
-                    <motion.div
-                      key={conv.id}
-                      whileHover={{ scale: 1.02 }}
-                      onClick={() => loadConversation(conv.id)}
-                      className={`group relative px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
-                        currentConversationId === conv.id
-                          ? 'bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200'
-                          : 'hover:bg-gray-100 border border-transparent'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className={`text-sm truncate ${
-                          currentConversationId === conv.id ? 'font-semibold text-gray-900' : 'text-gray-700'
-                        }`}>
-                          {displayTitle}
+                      : conv.first_message || "New Chat"
+                    
+                    return (
+                      <motion.div
+                        key={conv.id}
+                        whileHover={{ scale: 1.02 }}
+                        className={`group relative px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
+                          currentConversationId === conv.id
+                            ? 'bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200'
+                            : 'hover:bg-gray-100 border border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between" onClick={() => loadConversation(conv.id)}>
+                          <span className={`text-sm truncate flex-1 ${
+                            currentConversationId === conv.id ? 'font-semibold text-gray-900' : 'text-gray-700'
+                          }`}>
+                            {displayTitle}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleTogglePin(conv.id)
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-purple-500">
+                              <path d="M16 12V4h1a1 1 0 000-2H7a1 1 0 000 2h1v8l-2 2v2h5.586l-1.293 1.293a1 1 0 101.414 1.414L16 14.414l4.293 4.293a1 1 0 001.414-1.414L20.414 16H22v-2l-2-2h-4zm-2 0H10V4h4v8z"/>
+                            </svg>
+                          </button>
+                        </div>
+                        <span className="text-xs text-gray-500 mt-1 block">
+                          {new Date(conv.created_at).toLocaleDateString()}
                         </span>
-                      </div>
-                      <span className="text-xs text-gray-500 mt-1 block">
-                        {new Date(conv.created_at).toLocaleDateString()}
-                      </span>
-                    </motion.div>
-                  )
-                })
+                      </motion.div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* REGULAR CHATS SECTION */}
+              {regularConversations.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 mb-2">
+                    {pinnedConversations.length > 0 ? 'All Chats' : 'Chat History'}
+                  </div>
+                  
+                  {loadingHistory ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                    </div>
+                  ) : regularConversations.length === 0 && pinnedConversations.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      {searchQuery ? 'No chats found' : 'No conversations yet'}
+                    </div>
+                  ) : (
+                    regularConversations.map((conv) => {
+                      const displayTitle = conv.title && conv.title !== "New Chat"
+                        ? conv.title
+                        : conv.first_message || "New Chat"
+                      
+                      return (
+                        <motion.div
+                          key={conv.id}
+                          whileHover={{ scale: 1.02 }}
+                          className={`group relative px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
+                            currentConversationId === conv.id
+                              ? 'bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200'
+                              : 'hover:bg-gray-100 border border-transparent'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between" onClick={() => loadConversation(conv.id)}>
+                            <span className={`text-sm truncate flex-1 ${
+                              currentConversationId === conv.id ? 'font-semibold text-gray-900' : 'text-gray-700'
+                            }`}>
+                              {displayTitle}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleTogglePin(conv.id)
+                              }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 hover:text-purple-500">
+                                <path d="M16 12V4h1a1 1 0 000-2H7a1 1 0 000 2h1v8l-2 2v2h5.586l-1.293 1.293a1 1 0 101.414 1.414L16 14.414l4.293 4.293a1 1 0 001.414-1.414L20.414 16H22v-2l-2-2h-4zm-2 0H10V4h4v8z" strokeWidth="2"/>
+                              </svg>
+                            </button>
+                          </div>
+                          <span className="text-xs text-gray-500 mt-1 block">
+                            {new Date(conv.created_at).toLocaleDateString()}
+                          </span>
+                        </motion.div>
+                      )
+                    })
+                  )}
+                </div>
               )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* MAIN CHAT AREA */}
+      {/* MAIN CHAT AREA - Rest of the component remains the same but with updated Message component calls */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="border-b border-gray-200 z-10 bg-white flex-shrink-0">
           <div className="max-w-4xl mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {/* ✅ Toggle Sidebar Button */}
                 <button
                   onClick={() => setShowSidebar(!showSidebar)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -681,21 +974,12 @@ export default function Page() {
                   </svg>
                 </button>
                 
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)',
-                  }}
-                >
-                  <span className="text-white font-bold text-[10px]">Oracle</span>
-                </div>
                 <div>
                   <h1 className="text-base font-semibold text-gray-900">Oracle AI Assistant</h1>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                {/* Connection Status */}
                 <motion.div 
                   whileHover={{ scale: 1.02 }}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200"
@@ -712,7 +996,6 @@ export default function Page() {
                   </span>
                 </motion.div>
 
-                {/* Account Dropdown */}
                 {user && (
                   <div className="relative" ref={accountMenuRef}>
                     <motion.button
@@ -764,6 +1047,27 @@ export default function Page() {
                             </div>
                           </div>
 
+                          <div className="py-1">
+                            <motion.button
+                              whileHover={{ backgroundColor: 'rgba(249, 250, 251, 1)' }}
+                              onClick={() => {
+                                setShowAccountMenu(false)
+                                toast.success('Profile update coming soon! ')
+                              }}
+                              className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:text-purple-600 flex items-center gap-3 transition-colors"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-purple-600">
+                                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              </div>
+                              <div>
+                                <p className="font-medium">Profile</p>
+                                <p className="text-xs text-gray-500">Update your information</p>
+                              </div>
+                            </motion.button>
+                          </div>
+
                           <div className="border-t border-gray-100 mt-1 pt-1">
                             <motion.button
                               whileHover={{ backgroundColor: 'rgba(254, 242, 242, 1)' }}
@@ -807,7 +1111,7 @@ export default function Page() {
                       background: 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)',
                     }}
                   >
-                    <span className="text-white font-bold text-sm">Oracle</span>
+                    <span className="text-white font-bold text-sm">oracle</span>
                   </div>
                   <h2 className="text-3xl font-semibold text-gray-900 mb-3">How can I help you today?</h2>
                   <p className="text-gray-600 text-base">
@@ -845,8 +1149,11 @@ export default function Page() {
                     message={m}
                     index={i}
                     onCopy={handleCopyMessage}
+                    onShare={handleShareMessage}
+                    onExport={handleExportMessage}
                     onRetry={handleRetryMessage}
                     onDelete={handleDeleteMessage}
+                    onReadAloud={handleReadAloud}
                   />
                 ))}
 
@@ -858,7 +1165,7 @@ export default function Page() {
                         background: 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)',
                       }}
                     >
-                      <span className="text-white font-bold text-[8px]">Oracle</span>
+                      <span className="text-white font-bold text-[8px]">oracle</span>
                     </div>
 
                     <div className="flex items-center gap-1 py-3">

@@ -3,7 +3,8 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth.routes.js";
-import chatRoutes from "./routes/chat.routes.js";  // ← ADD THIS
+import chatRoutes from "./routes/chat.routes.js";
+import exportRoutes from "./routes/export.routes.js";  // ← ADD THIS LINE
 
 const app = express();
 
@@ -18,7 +19,8 @@ app.use(cors({
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/chat", chatRoutes);  // ← ADD THIS
+app.use("/api/chat", chatRoutes);
+app.use("/api/export", exportRoutes);  // ← ADD THIS LINE
 
 // Health check
 app.get("/", (req, res) => {

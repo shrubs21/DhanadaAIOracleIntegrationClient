@@ -140,7 +140,12 @@ export default function LoginPage(){
                   boxShadow: '0 8px 24px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
                 }}
               >
-                <span className="text-3xl relative z-10">🔐</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="32" height="32" fill="white" className="relative z-10">
+                  <path d="M110.242 30.142a1.748 1.748 0 0 0-1.232-1.487 403.606 403.606 0 0 1-44.289-16.1 1.752 1.752 0 0 0-1.442 0 403.606 403.606 0 0 1-44.289 16.1 1.748 1.748 0 0 0-1.232 1.487 113.456 113.456 0 0 0 2.912 35.942c6.257 25.128 21.05 42.221 42.779 49.431a1.75 1.75 0 0 0 1.1 0c21.729-7.21 36.522-24.3 42.779-49.431a113.456 113.456 0 0 0 2.914-35.942zm-6.309 35.1C97.949 89.271 84.515 105 64 112.007c-20.487-6.994-33.912-22.694-39.909-46.672a113.51 113.51 0 0 1-2.949-33.676A416.349 416.349 0 0 0 64 16.061a416.188 416.188 0 0 0 42.858 15.6 113.25 113.25 0 0 1-2.925 33.577z"/>
+                  <path d="M101.339 34.655c-17.394-5.5-30.432-10.756-36.655-13.4a1.747 1.747 0 0 0-1.368 0c-6.223 2.641-19.261 7.9-36.655 13.4a1.752 1.752 0 0 0-1.222 1.632 107.971 107.971 0 0 0 3.1 28.292c5.43 21.36 17.149 35.631 34.832 42.415a1.753 1.753 0 0 0 1.254 0c17.683-6.784 29.4-21.055 34.832-42.414a107.986 107.986 0 0 0 3.1-28.293 1.752 1.752 0 0 0-1.218-1.632zm-5.273 29.063C91 83.655 80.211 97.03 64 103.481 47.789 97.03 37 83.655 31.934 63.717A105.7 105.7 0 0 1 28.92 37.61C45.245 32.4 57.633 27.451 64 24.77c6.367 2.681 18.755 7.627 35.08 12.84a105.72 105.72 0 0 1-3.014 26.108z"/>
+                  <path d="M76.515 51.153V46.6a12.515 12.515 0 1 0-25.03 0v4.555a8.29 8.29 0 0 0-6.3 8.034V76.74a8.291 8.291 0 0 0 8.282 8.282h21.07a8.291 8.291 0 0 0 8.282-8.282V59.187a8.29 8.29 0 0 0-6.304-8.034zM64 37.583a9.025 9.025 0 0 1 9.015 9.017v4.3h-18.03v-4.3A9.025 9.025 0 0 1 64 37.583zM79.319 76.74a4.788 4.788 0 0 1-4.782 4.782H53.463a4.788 4.788 0 0 1-4.782-4.782V59.187a4.789 4.789 0 0 1 4.782-4.787h21.074a4.789 4.789 0 0 1 4.782 4.783z"/>
+                  <path d="M68.129 60.861a6.191 6.191 0 0 0-10.293 4.026 6.144 6.144 0 0 0 2.079 5.237.464.464 0 0 1 .174.307v3.008a3.911 3.911 0 1 0 7.822 0v-2.98a.512.512 0 0 1 .184-.346 6.188 6.188 0 0 0 .034-9.252zm-2.351 6.629a3.982 3.982 0 0 0-1.367 2.969v2.98a.411.411 0 1 1-.822 0v-3.008a3.926 3.926 0 0 0-1.364-2.937 2.675 2.675 0 0 1-.9-2.283 2.715 2.715 0 0 1 2.364-2.41 2.768 2.768 0 0 1 .311-.018 2.662 2.662 0 0 1 1.794.686 2.688 2.688 0 0 1-.016 4.021z"/>
+                </svg>
                 <div 
                   className="absolute inset-0 opacity-40"
                   style={{
@@ -169,7 +174,6 @@ export default function LoginPage(){
                       border: '1px solid rgba(0, 0, 0, 0.1)',
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
                     }}
-                    placeholder="john@example.com"
                     value={email} 
                     onChange={e => setEmail(e.target.value)}
                     required
@@ -212,18 +216,18 @@ export default function LoginPage(){
                       border: '1px solid rgba(0, 0, 0, 0.1)',
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
                     }}
-                    placeholder="Enter your password"
                     value={password} 
                     onChange={e => setPassword(e.target.value)}
                     required
                     disabled={isLoading}
                   />
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
+                  <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900 transition-colors duration-300"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setShowPassword(!showPassword)
+                    }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900 transition-colors duration-300 z-10"
                     disabled={isLoading}
                   >
                     {showPassword ? (
@@ -242,7 +246,7 @@ export default function LoginPage(){
                         </g>
                       </svg>
                     )}
-                  </motion.button>
+                  </button>
                   <div 
                     className="absolute inset-0 rounded-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-300 pointer-events-none"
                     style={{

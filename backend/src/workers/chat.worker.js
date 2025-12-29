@@ -7,21 +7,18 @@ import { validate as isUUID } from "uuid";
 
 const { Pool } = pg;
 
-// PostgreSQL connection
+// 🔥 LOCAL / SUPABASE SAFE
 const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === "production"
+    ? { rejectUnauthorized: false }
+    : false,
 });
 
 console.log("🤖 Chat Worker Starting...");
-console.log("🟢 Redis instance exists:", !!redis);
+console.log("🟢 Redis connected:", !!redis);
 
-/**
- * Simulated AI response (streaming)
- */
+/* ---------------- AI STREAM ---------------- */
 async function generateAIResponse(prompt, conversationId) {
   const response = `I received your message: "${prompt}".`;
   const tokens = response.split(" ");
@@ -42,9 +39,7 @@ async function generateAIResponse(prompt, conversationId) {
   return response;
 }
 
-/**
- * Save message
- */
+/* ---------------- DB HELPERS ---------------- */
 async function saveMessage(conversationId, role, content) {
   await pool.query(
     `INSERT INTO messages (conversation_id, role, content)
@@ -53,19 +48,19 @@ async function saveMessage(conversationId, role, content) {
   );
 }
 
-/**
- * 🔥 FIX: Update conversation title with proper logging
- */
+// 🔥 FIXED: Update title ONLY if it's still "New Chat", NULL, or empty
 async function updateConversationTitle(conversationId, prompt) {
   try {
-    const title = prompt.trim().slice(0, 60) + (prompt.trim().length > 60 ? "..." : "");
-    
+    const title =
+      prompt.trim().slice(0, 60) +
+      (prompt.trim().length > 60 ? "..." : "");
+
     const result = await pool.query(
       `
       UPDATE conversations
-      SET title = $2, updated_at = NOW()
+      SET title = $2
       WHERE id = $1
-      AND title IN ('New Chat', 'New Conversation')
+      AND (title = 'New Chat' OR title IS NULL OR title = '' OR title = 'New Conversation')
       RETURNING id, title
       `,
       [conversationId, title]
@@ -74,66 +69,47 @@ async function updateConversationTitle(conversationId, prompt) {
     if (result.rowCount > 0) {
       console.log(`✅ Title updated to: "${title}"`);
     } else {
-      console.log(`⚠️ Title NOT updated (already has custom title or not found)`);
+      console.log(`⚠️ Title already set (not "New Chat")`);
     }
-
-    return result.rows[0];
   } catch (error) {
-    console.error("❌ Failed to update conversation title:", error);
-    // Don't throw - continue processing even if title update fails
+    console.error("❌ Title update failed:", error);
+    // Don't throw - continue processing
   }
 }
 
-/**
- * Worker loop
- */
+/* ---------------- WORKER LOOP ---------------- */
 async function startWorker() {
   console.log("✅ Worker listening on chat:queue");
 
   while (true) {
     try {
-      console.log("🟡 Waiting on BLPOP chat:queue");
-
       const data = await redis.blpop("chat:queue", 0);
+      const payload = JSON.parse(data[1]);
 
-      let payload;
-      try {
-        payload = JSON.parse(data[1]);
-      } catch (err) {
-        console.error("❌ Invalid JSON in Redis message:", data[1]);
+      const { conversationId, prompt } = payload;
+
+      if (!isUUID(conversationId) || !prompt) {
+        console.warn("⚠️ Invalid payload, skipping");
         continue;
       }
 
-      const { conversationId, userId, prompt } = payload;
+      console.log("🔄 Processing:", conversationId);
 
-      if (!conversationId || !prompt) {
-        console.warn("⚠️ Invalid payload:", payload);
-        continue;
-      }
-
-      if (!isUUID(conversationId)) {
-        console.warn("❌ Skipping invalid conversationId:", conversationId);
-        continue;
-      }
-
-      console.log("\n🔄 Processing message");
-      console.log("Conversation:", conversationId);
-      console.log("User:", userId);
-      console.log("Prompt:", prompt);
-
-      // ✅ 1. Save USER message
+      // 1️⃣ Save user message FIRST (critical for title update)
       await saveMessage(conversationId, "user", prompt);
+      console.log("✅ User message saved");
 
-      // 🔥 2. Update conversation title (with proper logging and error handling)
+      // 2️⃣ Update title ONLY if still "New Chat" (first message only)
       await updateConversationTitle(conversationId, prompt);
 
-      // ✅ 3. Generate + stream AI response
-      const aiResponse = await generateAIResponse(prompt, conversationId);
+      // 3️⃣ Stream AI response
+      const ai = await generateAIResponse(prompt, conversationId);
 
-      // ✅ 4. Save ASSISTANT message
-      await saveMessage(conversationId, "assistant", aiResponse);
+      // 4️⃣ Save assistant message
+      await saveMessage(conversationId, "assistant", ai);
+      console.log("✅ Assistant message saved");
 
-      console.log("✅ Message processed\n");
+      console.log("✅ Done:", conversationId, "\n");
     } catch (err) {
       console.error("❌ Worker error:", err);
       await new Promise((r) => setTimeout(r, 1000));

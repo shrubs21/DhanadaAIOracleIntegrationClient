@@ -36,41 +36,18 @@ export async function sendMessage(req, res) {
       }
     }
 
-  // ✅ Push message into Redis queue
-await enqueueChatMessage({
-  conversationId,
-  userId,
-  prompt
-})
+    // ✅ Push message into Redis queue
+    await enqueueChatMessage({
+      conversationId,
+      userId,
+      prompt
+    })
 
-// 🔥 AUTO-UPDATE CONVERSATION TITLE (Claude-like)
-const smartTitle = prompt && prompt.trim().length
-  ? (prompt.trim().slice(0, 60) + (prompt.trim().length > 60 ? "..." : ""))
-  : "New Chat"
-
-// 🔥 Update title ONLY for first user message (ChatGPT/Claude style)
-await pool.query(
-  `
-  UPDATE conversations c
-  SET title = $2
-  WHERE c.id = $1
-  AND NOT EXISTS (
-    SELECT 1
-    FROM messages
-    WHERE conversation_id = c.id
-    AND role = 'user'
-  )
-  `,
-  [conversationId, smartTitle]
-)
-
-
-// ✅ Respond to UI
-res.json({
-  status: "queued",
-  conversationId
-})
-
+    // ✅ Respond to UI
+    res.json({
+      status: "queued",
+      conversationId
+    })
 
   } catch (error) {
     console.error("❌ Send message error:", error)

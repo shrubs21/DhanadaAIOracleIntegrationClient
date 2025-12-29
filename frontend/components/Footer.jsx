@@ -1,4 +1,10 @@
+'use client'
+import { useState } from 'react'
+import toast from 'react-hot-toast'
+
 export default function Footer() {
+  const [email, setEmail] = useState('')
+
   const links = [
     {
       label: 'Documentation',
@@ -17,6 +23,22 @@ export default function Footer() {
       href: 'https://www.oracle.com/legal/privacy/'
     }
   ]
+
+  const handleNewsletterSubmit = (e) => {
+    e.preventDefault()
+    toast.success('Feature coming soon! 🚀', {
+      duration: 3000,
+      style: {
+        background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.95) 0%, rgba(59, 130, 246, 0.95) 100%)',
+        color: '#fff',
+        fontWeight: '600',
+        padding: '16px 24px',
+        borderRadius: '12px',
+        boxShadow: '0 8px 24px rgba(168, 85, 247, 0.3)'
+      }
+    })
+    setEmail('') // Clear input after submission
+  }
 
   return (
     <footer className="relative mt-24 border-t" style={{ borderColor: 'rgba(0, 0, 0, 0.1)' }}>
@@ -80,10 +102,13 @@ export default function Footer() {
             {/* Newsletter */}
             <div>
               <h4 className="text-gray-900 font-semibold mb-3">Stay Updated</h4>
-              <div className="flex gap-2">
+              <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
                 <input 
                   type="email" 
                   placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
                   className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none transition-all"
                   style={{
                     background: 'rgba(255, 255, 255, 0.7)',
@@ -93,6 +118,7 @@ export default function Footer() {
                   }}
                 />
                 <button 
+                  type="submit"
                   className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-lg"
                   style={{
                     background: 'linear-gradient(135deg, rgba(168, 85, 247, 1) 0%, rgba(59, 130, 246, 1) 100%)',
@@ -101,7 +127,7 @@ export default function Footer() {
                 >
                   →
                 </button>
-              </div>
+              </form>
             </div>
           </div>
 
