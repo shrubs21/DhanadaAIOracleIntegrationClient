@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
+import exportRoutes from "./routes/export.routes.js";
 
 const app = express();
 
@@ -21,12 +22,12 @@ app.use(
   })
 );
 
-
 app.options("*", cors());
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/export", exportRoutes);
 
 // Health check
 app.get("/", (req, res) => {

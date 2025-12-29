@@ -191,7 +191,9 @@ export default function RegisterPage() {
                   boxShadow: '0 8px 24px rgba(14, 165, 233, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
                 }}
               >
-                <span className="text-3xl relative z-10">✨</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="white" className="relative z-10" viewBox="0 0 16 16">
+                  <path fillRule="evenodd" d="M8 0a4 4 0 0 1 4 4v2.05a2.5 2.5 0 0 1 2 2.45v5a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 2 13.5v-5a2.5 2.5 0 0 1 2-2.45V4a4 4 0 0 1 4-4M4.5 7A1.5 1.5 0 0 0 3 8.5v5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 7zM8 1a3 3 0 0 0-3 3v2h6V4a3 3 0 0 0-3-3"/>
+                </svg>
                 <div 
                   className="absolute inset-0 opacity-40"
                   style={{
@@ -236,7 +238,6 @@ export default function RegisterPage() {
                       border: '1px solid rgba(0, 0, 0, 0.1)',
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
                     }}
-                    placeholder="John Doe"
                     required
                   />
                   <div 
@@ -265,7 +266,6 @@ export default function RegisterPage() {
                       border: '1px solid rgba(0, 0, 0, 0.1)',
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
                     }}
-                    placeholder="john@example.com"
                     required
                   />
                   <div 
@@ -294,15 +294,15 @@ export default function RegisterPage() {
                       border: '1px solid rgba(0, 0, 0, 0.1)',
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
                     }}
-                    placeholder="Create a strong password"
                     required
                   />
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
+                  <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900 transition-colors duration-300"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setShowPassword(!showPassword)
+                    }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900 transition-colors duration-300 z-10"
                   >
                     {showPassword ? (
                       <svg width="21" height="21" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -320,7 +320,7 @@ export default function RegisterPage() {
                         </g>
                       </svg>
                     )}
-                  </motion.button>
+                  </button>
                   <div 
                     className="absolute inset-0 rounded-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-300 pointer-events-none"
                     style={{
@@ -413,15 +413,15 @@ export default function RegisterPage() {
                       border: '1px solid rgba(0, 0, 0, 0.1)',
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
                     }}
-                    placeholder="Confirm your password"
                     required
                   />
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
+                  <button
                     type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900 transition-colors duration-300"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setShowConfirmPassword(!showConfirmPassword)
+                    }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900 transition-colors duration-300 z-10"
                   >
                     {showConfirmPassword ? (
                       <svg width="21" height="21" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -439,7 +439,7 @@ export default function RegisterPage() {
                         </g>
                       </svg>
                     )}
-                  </motion.button>
+                  </button>
                   <div 
                     className="absolute inset-0 rounded-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-300 pointer-events-none"
                     style={{
