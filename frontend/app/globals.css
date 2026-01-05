@@ -2,36 +2,85 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body { height: 100%; }
-body { 
-  background: radial-gradient(circle at 10% 10%, rgba(124,58,237,0.06), transparent 10%),
-             radial-gradient(circle at 90% 90%, rgba(14,165,233,0.04), transparent 10%),
-             #e7e4e4; 
+html,
+body {
+  height: 100%;
 }
+
+body {
+  background: #ffffff;
+  color: #0B132B;
+}
+
+/* --------------------------------------------------
+   Subtle background texture (enterprise, optional)
+   -------------------------------------------------- */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(3, 4, 94, 0.04), transparent 20%),
+    radial-gradient(circle at 90% 90%, rgba(3, 4, 94, 0.03), transparent 20%);
+}
+
+/* --------------------------------------------------
+   Voice / Thinking indicator (Enterprise version)
+   -------------------------------------------------- */
+
 .siri-core {
-  width: 70px;
-  height: 70px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
-  background: radial-gradient(circle, #8b5cf6, #3b82f6, #06b6d4);
-  filter: blur(10px);
-  animation: siriCore 1.6s ease-in-out infinite;
+  background: radial-gradient(
+    circle,
+    rgba(3, 4, 94, 0.9),
+    rgba(3, 4, 94, 0.6)
+  );
+  filter: blur(6px);
+  animation: siriCore 1.8s ease-in-out infinite;
 }
 
 .siri-ring {
   position: absolute;
+  inset: -20px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(139,92,246,0.4), rgba(59,130,246,0.3), rgba(6,182,212,0.2));
-  filter: blur(35px);
-  animation: siriRing 2.5s ease-in-out infinite;
+  background: radial-gradient(
+    circle,
+    rgba(3, 4, 94, 0.25),
+    transparent 65%
+  );
+  filter: blur(20px);
+  animation: siriRing 3s ease-in-out infinite;
 }
 
+/* --------------------------------------------------
+   Animations (kept smooth, not flashy)
+   -------------------------------------------------- */
+
 @keyframes siriCore {
-  0%,100% { transform: scale(1); opacity: 1; }
-  50%     { transform: scale(1.4); opacity: 0.8; }
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.7;
+  }
 }
 
 @keyframes siriRing {
-  0%   { transform: scale(1); opacity: 0.4; }
-  50%  { transform: scale(2); opacity: 0.8; }
-  100% { transform: scale(1); opacity: 0.4; }
+  0% {
+    transform: scale(1);
+    opacity: 0.25;
+  }
+  50% {
+    transform: scale(1.6);
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.25;
+  }
 }

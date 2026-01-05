@@ -7,13 +7,14 @@ import { validate as isUUID } from "uuid";
 
 const { Pool } = pg;
 
-// 🔥 LOCAL / SUPABASE SAFE
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production"
-    ? { rejectUnauthorized: false }
-    : false,
+  host: process.env.DB_HOST || "postgres",
+  port: process.env.DB_PORT || 5432,
+  user: process.env.DB_USER || "postgres",
+  password: process.env.DB_PASSWORD || "postgres123",
+  database: process.env.DB_NAME || "oracle_ai",
 });
+
 
 console.log("🤖 Chat Worker Starting...");
 console.log("🟢 Redis connected:", !!redis);

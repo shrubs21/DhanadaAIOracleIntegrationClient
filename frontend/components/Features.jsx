@@ -16,92 +16,50 @@ export default function Features() {
       title: "Secure by Design",
       desc: "Credentials stay on backend; prompts are sanitized and validated."
     }
-  ];
-  
+  ]
+
   return (
-    <section className="my-20 px-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
+    <section className="mb-8 px-4 bg-white">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-6xl mx-auto">
         {items.map((it, i) => (
           <div
             key={i}
-            className="group relative p-8 rounded-3xl transition-all duration-300 hover:scale-[1.02]"
+            className="group relative p-8 rounded-2xl transition-all duration-300 hover:scale-[1.02] cursor-pointer"
             style={{
-              background: 'rgba(255, 255, 255, 0.7)',
-              backdropFilter: 'blur(30px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-              border: '1px solid rgba(255, 255, 255, 0.8)',
-              boxShadow: `
-                0 8px 32px -8px rgba(0, 0, 0, 0.1),
-                0 0 0 1px rgba(255, 255, 255, 0.5) inset,
-                0 1px 2px rgba(255, 255, 255, 0.9) inset
-              `
+              background: 'rgba(255, 255, 255, 0.95)',
+              border: '1px solid rgba(229, 231, 235, 1)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.06)'
             }}
           >
-            {/* Top gradient glow - subtle color hint */}
-            <div 
-              className="absolute -top-px left-0 right-0 h-20 rounded-t-3xl opacity-40"
-              style={{
-                background: i % 2 === 0 
-                  ? 'linear-gradient(180deg, rgba(168, 85, 247, 0.3) 0%, transparent 100%)'
-                  : 'linear-gradient(180deg, rgba(34, 211, 238, 0.3) 0%, transparent 100%)',
-                filter: 'blur(20px)'
-              }}
-            />
-            
-            {/* Hover gradient overlay */}
+            {/* Blue overlay on hover */}
             <div
-              className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
               style={{
-                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(34, 211, 238, 0.05) 100%)'
+                background: 'linear-gradient(135deg, rgba(3, 4, 94, 0.08), rgba(3, 4, 94, 0.04))'
               }}
             />
-            
-            {/* Top edge highlight - Apple style */}
+
+            {/* Top glow on hover */}
             <div
-              className="absolute top-0 left-1/4 right-1/4 h-px opacity-70"
+              className="absolute -top-px left-0 right-0 h-12 rounded-t-2xl opacity-0 group-hover:opacity-40 transition-opacity duration-300"
               style={{
-                background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 1), transparent)'
+                background: 'linear-gradient(180deg, rgba(3, 4, 94, 0.2) 0%, transparent 100%)',
+                filter: 'blur(8px)'
               }}
             />
-            
+
             {/* Content */}
             <div className="relative z-10">
-              <h3 className="text-xl font-semibold mb-3 text-gray-900">
+              <h3 className="text-xl font-semibold mb-3 text-[#0B132B] group-hover:text-[#03045E] transition-colors duration-300">
                 {it.title}
               </h3>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="text-[#475569] leading-relaxed">
                 {it.desc}
               </p>
             </div>
-            
-            {/* Subtle radial glow top-left */}
-            <div
-              className="absolute inset-0 rounded-3xl pointer-events-none opacity-30"
-              style={{
-                background: 'radial-gradient(circle at top left, rgba(255, 255, 255, 0.8), transparent 50%)'
-              }}
-            />
-            
-            {/* Bottom-right colored accent */}
-            <div
-              className="absolute bottom-0 right-0 w-32 h-32 rounded-3xl pointer-events-none opacity-15"
-              style={{
-                background: i % 2 === 0
-                  ? 'radial-gradient(circle at bottom right, rgba(168, 85, 247, 0.6), transparent 70%)'
-                  : 'radial-gradient(circle at bottom right, rgba(34, 211, 238, 0.6), transparent 70%)'
-              }}
-            />
-            
-            {/* Bottom edge subtle shadow for depth */}
-            <div
-              className="absolute -bottom-px left-1/4 right-1/4 h-px opacity-30"
-              style={{
-                background: 'linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.1), transparent)'
-              }}
-            />
           </div>
         ))}
       </div>
     </section>
-  );
+  )
 }
