@@ -140,8 +140,8 @@ const FileUploadArea = ({ onFileSelect, disabled }) => {
   )
 }
 
-// ✅ MESSAGE COMPONENT WITH DYNAMIC EFFECTS
-const Message = ({ message, index, onCopy, onRetry, onDelete, onShare, onExport, onReadAloud }) => {
+//  MESSAGE COMPONENT WITH COMPACT ACTIONS INCLUDING SHARE AND EXPORT
+const Message = ({ message, index, onCopy, onRetry, onShare, onExport, onReadAloud }) => {
   const [showActions, setShowActions] = useState(false)
 
   const hasTable = (text) => {
@@ -174,7 +174,6 @@ const Message = ({ message, index, onCopy, onRetry, onDelete, onShare, onExport,
     })
   }
 
-  // Dynamic animation variants
   const messageVariants = {
     hidden: { 
       opacity: 0, 
@@ -212,54 +211,65 @@ const Message = ({ message, index, onCopy, onRetry, onDelete, onShare, onExport,
       onMouseLeave={() => setShowActions(false)}
     >
       {message.role === 'assistant' && (
-        <motion.div 
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-          className="w-10 h-10 rounded-full bg-[#03045E] flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0 shadow-md"
-        >
-          Oracle
-        </motion.div>
+        <motion.div
+  initial={{ scale: 0 }}
+  animate={{ scale: 1 }}
+  transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+  className="w-10 h-10 rounded-full bg-[#03045E] flex items-center justify-center flex-shrink-0 shadow-md"
+>
+  <span className="text-white font-semibold text-[11px] tracking-wide">
+    Oracle
+  </span>
+</motion.div>
+
       )}
 
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className={`max-w-[75%] rounded-2xl px-5 py-4 relative group shadow-sm ${
-          message.role === 'assistant'
-            ? 'bg-[#F9FAFB] border border-[#E5E7EB]'
-            : 'bg-white border border-[#E5E7EB] text-[#0B132B]'
-        }`}
-      >
-        <div className="text-[15px] leading-relaxed text-[#0B132B]">
-          {renderContent(message.text)}
-        </div>
+      <div className="relative max-w-[75%]">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className={`rounded-2xl px-5 py-4 shadow-sm ${
+            message.role === 'assistant'
+              ? 'bg-[#F9FAFB] border border-[#E5E7EB]'
+              : 'bg-white border border-[#E5E7EB] text-[#0B132B]'
+          }`}
+        >
+          <div className="text-[15px] leading-relaxed text-[#0B132B]">
+            {renderContent(message.text)}
+          </div>
+        </motion.div>
 
+        {/* Compact Action Buttons - Only show on hover, positioned beside message */}
         <AnimatePresence>
           {showActions && (
             <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              transition={{ duration: 0.2 }}
-              className="mt-3 pt-3 border-t border-[#E5E7EB] flex gap-1.5 justify-end"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.15 }}
+              className={`absolute top-2 ${message.role === 'assistant' ? '-right-12' : '-left-12'} flex flex-col gap-1`}
             >
               <button
                 onClick={() => onCopy(message.text)}
-                className="p-1.5 hover:bg-[#F9FAFB] rounded-lg transition-all"
+                className="p-2 hover:bg-[#F9FAFB] rounded-lg transition-all border border-[#E5E7EB] bg-white shadow-sm"
                 title="Copy"
               >
-                <svg className="w-4 h-4 text-[#475569]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
+              <svg viewBox="-0.5 -0.5 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" id="Sidebar-Collapse--Streamline-Iconoir" height="16" width="16">
+  <desc>
+    Sidebar Collapse Streamline Icon: https://streamlinehq.com
+  </desc>
+  <path d="M12.7769375 14.284625H2.2230625c-0.8326875 0 -1.5076875 -0.675 -1.5076875 -1.5076875l0 -10.553875c0 -0.8326875 0.675 -1.5076875 1.5076875 -1.5076875h10.553875c0.8326875 0 1.5076875 0.675 1.5076875 1.5076875v10.553875c0 0.8326875 -0.675 1.5076875 -1.5076875 1.5076875Z" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"></path>
+  <path d="M3.9192500000000003 5.9923125 2.6 7.5l1.3192499999999998 1.5076875" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"></path>
+  <path d="M5.615375 14.284625V0.7153750000000001" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"></path>
+</svg>
               </button>
 
               {message.role === 'assistant' && (
                 <>
                   <button
                     onClick={() => onReadAloud(message.text)}
-                    className="p-1.5 hover:bg-[#F9FAFB] rounded-lg transition-all"
+                    className="p-2 hover:bg-[#F9FAFB] rounded-lg transition-all border border-[#E5E7EB] bg-white shadow-sm"
                     title="Read Aloud"
                   >
                     <svg className="w-4 h-4 text-[#03045E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -269,7 +279,7 @@ const Message = ({ message, index, onCopy, onRetry, onDelete, onShare, onExport,
 
                   <button
                     onClick={() => onShare(message.text)}
-                    className="p-1.5 hover:bg-[#F9FAFB] rounded-lg transition-all"
+                    className="p-2 hover:bg-[#F9FAFB] rounded-lg transition-all border border-[#E5E7EB] bg-white shadow-sm"
                     title="Share"
                   >
                     <svg className="w-4 h-4 text-[#03045E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -279,7 +289,7 @@ const Message = ({ message, index, onCopy, onRetry, onDelete, onShare, onExport,
 
                   <button
                     onClick={() => onExport(message.text, exportType)}
-                    className="p-1.5 hover:bg-[#F9FAFB] rounded-lg transition-all"
+                    className="p-2 hover:bg-[#F9FAFB] rounded-lg transition-all border border-[#E5E7EB] bg-white shadow-sm"
                     title={`Export as ${exportType === 'excel' ? 'Excel' : 'PDF'}`}
                   >
                     {exportType === 'excel' ? (
@@ -295,7 +305,7 @@ const Message = ({ message, index, onCopy, onRetry, onDelete, onShare, onExport,
 
                   <button
                     onClick={() => onRetry(index)}
-                    className="p-1.5 hover:bg-[#F9FAFB] rounded-lg transition-all"
+                    className="p-2 hover:bg-[#F9FAFB] rounded-lg transition-all border border-[#E5E7EB] bg-white shadow-sm"
                     title="Retry"
                   >
                     <svg className="w-4 h-4 text-[#475569]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -304,20 +314,10 @@ const Message = ({ message, index, onCopy, onRetry, onDelete, onShare, onExport,
                   </button>
                 </>
               )}
-
-              <button
-                onClick={() => onDelete(index)}
-                className="p-1.5 hover:bg-red-50 rounded-lg transition-all"
-                title="Delete"
-              >
-                <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </div>
 
       {message.role === 'user' && (
         <motion.div 
@@ -365,6 +365,7 @@ export default function Page() {
   const [selectedFile, setSelectedFile] = useState(null)
   const [uploadedFileData, setUploadedFileData] = useState(null)
   const [uploading, setUploading] = useState(false)
+  const [hoveredConversation, setHoveredConversation] = useState(null)
 
   const messagesEndRef = useRef(null)
   const chatContainerRef = useRef(null)
@@ -397,7 +398,7 @@ export default function Page() {
       formData.append('file', file)
 
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/files/upload`, {
+      const response = await fetch(`${API_URL}/api/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -494,6 +495,33 @@ export default function Page() {
       return newPins
     })
   }, [])
+
+  const handleDeleteConversation = useCallback(async (conversationId, e) => {
+    e.stopPropagation()
+    
+    if (!confirm('Are you sure you want to delete this conversation?')) {
+      return
+    }
+
+    try {
+      const res = await apiFetch(`${API_URL}/api/chat/conversations/${conversationId}`, {
+        method: 'DELETE'
+      })
+
+      if (res.ok) {
+        setConversations(prev => prev.filter(conv => conv.id !== conversationId))
+        if (currentConversationId === conversationId) {
+          setMessages([])
+          setCurrentConversationId(null)
+          localStorage.removeItem('currentConversationId')
+        }
+        toast.success('Conversation deleted')
+      }
+    } catch (error) {
+      console.error('Failed to delete conversation:', error)
+      toast.error('Failed to delete conversation')
+    }
+  }, [currentConversationId])
 
   const filteredConversations = useCallback(() => {
     if (!searchQuery.trim()) return conversations
@@ -955,6 +983,8 @@ export default function Page() {
                 return (
                   <div
                     key={conv.id}
+                    onMouseEnter={() => setHoveredConversation(conv.id)}
+                    onMouseLeave={() => setHoveredConversation(null)}
                     className={`group relative px-3 py-3 rounded-xl cursor-pointer transition-all mb-1.5 ${
                       currentConversationId === conv.id
                         ? 'bg-white border border-[#E5E7EB] shadow-sm'
@@ -962,24 +992,39 @@ export default function Page() {
                     }`}
                   >
                     <div onClick={() => loadConversation(conv.id)}>
-                      <div className="font-semibold text-sm text-[#0B132B] truncate pr-6">
+                      <div className="font-semibold text-sm text-[#0B132B] truncate pr-16">
                         {displayTitle}
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleTogglePin(conv.id)
-                        }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 absolute right-3 top-3"
-                      >
-                        <svg className="w-4 h-4 text-amber-500 fill-current" viewBox="0 0 24 24">
-                          <path d="M16,12V4H17V2H7V4H8V12L6,14V16H11.2V22H12.8V16H18V14L16,12Z" />
-                        </svg>
-                      </button>
                       <div className="text-xs text-[#6B7280] mt-1 font-medium">
                         {new Date(conv.created_at).toLocaleDateString()}
                       </div>
                     </div>
+                    
+                    {hoveredConversation === conv.id && (
+                      <div className="absolute right-2 top-3 flex gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTogglePin(conv.id)
+                          }}
+                          className="p-1.5 hover:bg-[#F9FAFB] rounded-lg transition-all"
+                          title="Unpin"
+                        >
+                          <svg className="w-4 h-4 text-amber-500 fill-current" viewBox="0 0 24 24">
+                            <path d="M16,12V4H17V2H7V4H8V12L6,14V16H11.2V22H12.8V16H18V14L16,12Z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteConversation(conv.id, e)}
+                          className="p-1.5 hover:bg-red-50 rounded-lg transition-all"
+                          title="Delete"
+                        >
+                          <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -988,9 +1033,18 @@ export default function Page() {
 
           {regularConversations.length > 0 && (
             <div className="p-2">
-              <div className="text-xs font-bold text-[#6B7280] px-3 py-2 uppercase tracking-wider">
-                {pinnedConversations.length > 0 ? '💬 All Chats' : '💬 Chat History'}
-              </div>
+               <div className="text-xs font-bold text-[#6B7280] px-3 py-2 uppercase tracking-wider">
+    <div className="flex items-center gap-2">
+      <img
+        src="/assets/chat.png"
+        alt="Chat"
+        className="w-4 h-4 object-contain"
+      />
+      <span>
+        {pinnedConversations.length > 0 ? 'All Chats' : 'Chat History'}
+      </span>
+    </div>
+  </div>
 
               {loadingHistory ? (
                 <div className="flex items-center justify-center py-8">
@@ -1009,6 +1063,8 @@ export default function Page() {
                   return (
                     <div
                       key={conv.id}
+                      onMouseEnter={() => setHoveredConversation(conv.id)}
+                      onMouseLeave={() => setHoveredConversation(null)}
                       className={`group relative px-3 py-3 rounded-xl cursor-pointer transition-all mb-1.5 ${
                         currentConversationId === conv.id
                           ? 'bg-white border border-[#E5E7EB] shadow-sm'
@@ -1016,24 +1072,39 @@ export default function Page() {
                       }`}
                     >
                       <div onClick={() => loadConversation(conv.id)}>
-                        <div className="font-semibold text-sm text-[#0B132B] truncate pr-6">
+                        <div className="font-semibold text-sm text-[#0B132B] truncate pr-16">
                           {displayTitle}
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleTogglePin(conv.id)
-                          }}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 absolute right-3 top-3"
-                        >
-                          <svg className="w-4 h-4 text-[#6B7280] hover:text-amber-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                          </svg>
-                        </button>
                         <div className="text-xs text-[#6B7280] mt-1 font-medium">
                           {new Date(conv.created_at).toLocaleDateString()}
                         </div>
                       </div>
+                      
+                      {hoveredConversation === conv.id && (
+                        <div className="absolute right-2 top-3 flex gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleTogglePin(conv.id)
+                            }}
+                            className="p-1.5 hover:bg-[#F9FAFB] rounded-lg transition-all"
+                            title="Pin"
+                          >
+                            <svg className="w-4 h-4 text-[#6B7280] hover:text-amber-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteConversation(conv.id, e)}
+                            className="p-1.5 hover:bg-red-50 rounded-lg transition-all"
+                            title="Delete"
+                          >
+                            <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )
                 })
@@ -1052,9 +1123,13 @@ export default function Page() {
               onClick={() => setShowSidebar(!showSidebar)}
               className="p-2.5 hover:bg-[#F9FAFB] rounded-xl transition-all"
             >
-              <svg className="w-5 h-5 text-[#475569]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+             <svg viewBox="-0.625 -0.625 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" id="Log-Out--Streamline-Iconoir" height="30" width="30">
+  <desc>
+    Log Out Streamline Icon: https://streamlinehq.com
+  </desc>
+  <path d="M9.375 9.375h6.596171875m0 0 -2.826953125 2.826953125M15.971171875000001 9.375l-2.826953125 -2.826953125" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.25"></path>
+  <path d="M15.971171875000001 3.7211718749999996V2.778828125c0 -1.0408593750000001 -0.84375 -1.8846093750000001 -1.8846093750000001 -1.8846093750000001H4.6634375c-1.04078125 0 -1.8846093750000001 0.84375 -1.8846093750000001 1.8846093750000001v13.19234375c0 1.0408593750000001 0.843828125 1.8846093750000001 1.8846093750000001 1.8846093750000001h9.423125c1.0408593750000001 0 1.8846093750000001 -0.84375 1.8846093750000001 -1.8846093750000001v-0.9423437499999999" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.25"></path>
+</svg>
             </button>
 
             <div>
@@ -1154,14 +1229,31 @@ export default function Page() {
               transition={{ duration: 0.5 }}
               className="h-full flex flex-col items-center justify-center text-center max-w-3xl mx-auto"
             >
-              <motion.div 
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-24 h-24 rounded-full bg-[#03045E] flex items-center justify-center text-white text-sm font-bold mb-6 shadow-lg"
-              >
-                Oracle
-              </motion.div>
+   <motion.div
+  initial={{ scale: 0 }}
+  animate={{ scale: 1 }}
+  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+  className="
+    w-20
+    h-13
+    
+    aspect-square
+    rounded-full
+    bg-[#03045E]
+    flex
+    items-center
+    justify-center
+    shadow-lg
+    mt-5
+  "
+>
+  <span className="text-white font-semibold text-lg tracking-wide leading-none">
+    oracle
+  </span>
+</motion.div>
+
+
+
               <motion.h2 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -1179,33 +1271,53 @@ export default function Page() {
                 Ask me anything about Oracle HCM, SCM, ERP, or Financials
               </motion.p>
 
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="grid grid-cols-2 gap-4 w-full max-w-2xl"
-              >
-                {[
-                  { icon: '📊', text: 'Show employee attrition trends' },
-                  { icon: '🔗', text: 'Analyze supplier performance' },
-                  { icon: '📈', text: 'Generate financial reports' },
-                  { icon: '📦', text: 'Check inventory levels' }
-                ].map((suggestion, i) => (
-                  <motion.button
-                    key={i}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 + (i * 0.1) }}
-                    onClick={() => setInput(suggestion.text)}
-                    className="p-5 rounded-2xl text-left transition-all hover:bg-[#F9FAFB] hover:shadow-md border-2 border-[#E5E7EB] hover:border-[#03045E] group"
-                  >
-                    <div className="text-3xl mb-2">{suggestion.icon}</div>
-                    <div className="text-sm font-semibold text-[#475569] group-hover:text-[#03045E] transition-colors">
-                      {suggestion.text}
-                    </div>
-                  </motion.button>
-                ))}
-              </motion.div>
+              <motion.div
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  transition={{ delay: 0.5 }}
+  className="grid grid-cols-2 gap-4 w-full max-w-2xl"
+>
+  {[
+    {
+      icon: '/assets/show-employee-attrition-trends.png',
+      text: 'Show employee attrition trends'
+    },
+    {
+      icon: '/assets/supply-chain.png',
+      text: 'Analyze supplier performance'
+    },
+    {
+      icon: '/assets/generate-financial-reports.png',
+      text: 'Generate financial reports'
+    },
+    {
+      icon: '/assets/inventory-management.png',
+      text: 'Check inventory levels'
+    }
+  ].map((suggestion, i) => (
+    <motion.button
+      key={i}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.6 + i * 0.1 }}
+      onClick={() => setInput(suggestion.text)}
+      className="p-5 rounded-2xl text-left transition-all hover:bg-[#F9FAFB] hover:shadow-md border-2 border-[#E5E7EB] hover:border-[#03045E] group"
+    >
+      {/* ICON IMAGE */}
+      <img
+        src={suggestion.icon}
+        alt={suggestion.text}
+        className="w-10 h-10 mb-3 object-contain"
+      />
+
+      {/* TEXT */}
+      <div className="text-sm font-semibold text-[#475569] group-hover:text-[#03045E] transition-colors">
+        {suggestion.text}
+      </div>
+    </motion.button>
+  ))}
+</motion.div>
+
             </motion.div>
           ) : (
             <div className="max-w-4xl mx-auto space-y-6">
@@ -1394,4 +1506,4 @@ export default function Page() {
       </div>
     </div>
   )
-}
+} 
