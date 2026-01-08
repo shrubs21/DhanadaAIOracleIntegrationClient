@@ -5,16 +5,19 @@ import { v4 as uuidv4 } from "uuid"
 
 /**
  * POST /api/chat/send
- * Queue a user message into Redis
+ * Queue a user message into Redis (WITH FILE SUPPORT)
  */
 export async function sendMessage(req, res) {
   try {
     const userId = req.user.id
-    let { prompt, conversationId } = req.body
+   let { prompt, message, conversationId, fileData } = req.body
 
-    if (!prompt || !prompt.trim()) {
-      return res.status(400).json({ error: "Message cannot be empty" })
-    }
+const finalPrompt = prompt || message
+
+if (!finalPrompt || !finalPrompt.trim()) {
+  return res.status(400).json({ error: "Message cannot be empty" })
+}
+
 
     // ✅ Ensure conversation exists
     if (!conversationId) {
@@ -36,11 +39,12 @@ export async function sendMessage(req, res) {
       }
     }
 
-    // ✅ Push message into Redis queue
+    // ✅ Push message into Redis queue (WITH FILE DATA)
     await enqueueChatMessage({
       conversationId,
       userId,
-      prompt
+      prompt: finalPrompt,
+      fileData: fileData || null  // Include file data if present
     })
 
     // ✅ Respond to UI
@@ -173,6 +177,43 @@ export async function getMessages(req, res) {
   } catch (error) {
     console.error("❌ Get messages error:", error)
     res.status(500).json({ error: "Failed to fetch messages" })
+  }
+}
+
+/**
+ * DELETE /api/chat/conversations/:conversationId
+ */
+export async function deleteConversation(req, res) {
+  try {
+    const { conversationId } = req.params
+    const userId = req.user.id
+
+    // First verify ownership
+    const conv = await pool.query(
+      `SELECT id FROM conversations WHERE id = $1 AND user_id = $2`,
+      [conversationId, userId]
+    )
+
+    if (!conv.rows.length) {
+      return res.status(404).json({ error: "Conversation not found" })
+    }
+
+    // Delete messages first (foreign key constraint)
+    await pool.query(
+      `DELETE FROM messages WHERE conversation_id = $1`,
+      [conversationId]
+    )
+
+    // Delete conversation
+    await pool.query(
+      `DELETE FROM conversations WHERE id = $1`,
+      [conversationId]
+    )
+
+    res.json({ success: true, message: "Conversation deleted" })
+  } catch (error) {
+    console.error("❌ Delete conversation error:", error)
+    res.status(500).json({ error: "Failed to delete conversation" })
   }
 }
 

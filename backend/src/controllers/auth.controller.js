@@ -20,13 +20,13 @@ export const register = async (req, res) => {
 
     console.log("🟢 Register request received:", { firstName, email });
 
-    // 🔍 DB connectivity sanity check
+    //  DB connectivity sanity check
     await pool.query("SELECT 1");
 
-    // 🔐 Hash password
+    //  Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 🧾 Insert user
+
     const result = await pool.query(
       `INSERT INTO users (first_name, email, password)
        VALUES ($1, $2, $3)

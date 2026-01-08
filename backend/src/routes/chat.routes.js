@@ -1,27 +1,30 @@
-import express from "express"
+import express from 'express'
+import { authenticateToken } from '../middlewares/auth.middleware.js'
 import {
   sendMessage,
   streamChat,
   createConversation,
   getConversations,
   getMessages,
+  deleteConversation,
   healthCheck
-} from "../controllers/chat.controller.js"
-
-import { authenticateToken } from "../middlewares/auth.middleware.js"
+} from '../controllers/chat.controller.js'
 
 const router = express.Router()
 
-// ✅ PUBLIC (health checks should not require auth)
-router.get("/health", healthCheck)
+// 💬 Send message (queue to Redis)
+router.post('/send', authenticateToken, sendMessage)
 
-// 🔐 PROTECTED ROUTES
-router.use(authenticateToken)
+// 📡 Stream chat (SSE)
+router.get('/stream/:conversationId', authenticateToken, streamChat)
 
-router.post("/send", sendMessage)
-router.get("/stream/:conversationId", streamChat)
-router.post("/conversations", createConversation)
-router.get("/conversations", getConversations)
-router.get("/conversations/:conversationId/messages", getMessages)
+// 📂 Conversations
+router.post('/conversations', authenticateToken, createConversation)
+router.get('/conversations', authenticateToken, getConversations)
+router.get('/conversations/:conversationId/messages', authenticateToken, getMessages)
+router.delete('/conversations/:conversationId', authenticateToken, deleteConversation)
+
+// 🏥 Health check
+router.get('/health', healthCheck)
 
 export default router
