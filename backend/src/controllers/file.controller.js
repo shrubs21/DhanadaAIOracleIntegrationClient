@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url)
 const pdf = require('pdf-parse')
 
 
-// 📁 Configure multer storage
+//  Configure multer storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
   const uploadDir = path.join(process.cwd(), 'uploads')
@@ -23,7 +23,7 @@ const storage = multer.diskStorage({
   }
 })
 
-// 🔒 File filter
+//  File filter
 const fileFilter = (req, file, cb) => {
   const allowedTypes = [
     'image/jpeg',
@@ -48,7 +48,7 @@ export const upload = multer({
   }
 })
 
-// 📤 Upload file endpoint
+//  Upload file endpoint
 export async function uploadFile(req, res) {
   try {
     if (!req.file) {
@@ -64,7 +64,6 @@ export async function uploadFile(req, res) {
       size: file.size,
       uploadedAt: new Date().toISOString()
     }
-
     // 📄 Extract text from PDF
     if (file.mimetype === 'application/pdf') {
       try {
@@ -99,7 +98,7 @@ export async function uploadFile(req, res) {
   }
 }
 
-// 🗑️ Delete file
+//  Delete file
 export async function deleteFile(req, res) {
   try {
     const { filepath } = req.body
