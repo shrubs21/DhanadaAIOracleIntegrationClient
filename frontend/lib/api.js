@@ -1,15 +1,22 @@
-export async function sendChatMessage(prompt, conversationId) {
-  const token = localStorage.getItem("token")
+// 🔥 Backend API URL from environment variable
+const API_URL = process.env.NEXT_PUBLIC_API_URL
 
-  const res = await fetch("http://localhost:4000/api/chat/send", {
+export async function sendChatMessage(message, conversationId) {
+  const token = localStorage.getItem("authToken")
+
+  if (!token) {
+    throw new Error("Authentication token missing")
+  }
+
+  const res = await fetch(`${API_URL}/api/chat/send`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
+      Authorization: `Bearer ${token}`
     },
     body: JSON.stringify({
-      prompt,
-      conversationId
+      message,              // ✅ FIXED (was `prompt`)
+      conversationId        // optional, backend handles null
     })
   })
 

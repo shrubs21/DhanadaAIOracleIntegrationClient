@@ -11,22 +11,22 @@ export const register = async (req, res) => {
   try {
     const { firstName, email, password } = req.body;
 
-    // 🔒 Basic validation
+    //  Basic validation
     if (!firstName || !email || !password) {
       return res.status(400).json({
         error: "First name, email and password are required",
       });
     }
 
-    console.log("🟢 Register request received:", { firstName, email });
+    console.log(" Register request received:", { firstName, email });
 
-    // 🔍 DB connectivity sanity check
+    //  DB connectivity sanity check
     await pool.query("SELECT 1");
 
-    // 🔐 Hash password
+    //  Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 🧾 Insert user
+
     const result = await pool.query(
       `INSERT INTO users (first_name, email, password)
        VALUES ($1, $2, $3)
@@ -34,13 +34,13 @@ export const register = async (req, res) => {
       [firstName, email, hashedPassword]
     );
 
-    console.log("✅ User registered with ID:", result.rows[0].id);
+    console.log(" User registered with ID:", result.rows[0].id);
 
     return res.status(201).json({
       message: "User registered successfully",
     });
   } catch (err) {
-    console.error("❌ REGISTER ERROR:", err);
+    console.error(" REGISTER ERROR:", err);
 
     // Duplicate email
     if (err.code === "23505") {
@@ -87,7 +87,7 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // 🔐 JWT
+    //  JWT
     const token = jwt.sign(
       {
         id: user.id,
@@ -107,7 +107,7 @@ export const login = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("❌ LOGIN ERROR:", err);
+    console.error(" LOGIN ERROR:", err);
     return res.status(500).json({ error: "Server error" });
   }
 };

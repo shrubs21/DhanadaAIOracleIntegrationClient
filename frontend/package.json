@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "framer-motion": "^12.23.26",
+    "multer": "^2.0.2",
     "next": "13.4.10",
+    "pdf-parse": "^2.4.5",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-hot-toast": "^2.6.0"

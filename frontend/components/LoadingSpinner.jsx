@@ -1,3 +1,4 @@
+// LoadingSpinner.jsx
 export default function LoadingSpinner({ fullScreen = false, size = 'md' }) {
   const sizes = {
     sm: 'w-4 h-4 border-2',
@@ -9,17 +10,17 @@ export default function LoadingSpinner({ fullScreen = false, size = 'md' }) {
   const spinner = (
     <div className="flex items-center justify-center">
       <div 
-        className={`${sizes[size]} border-purple-200 border-t-purple-600 rounded-full animate-spin`}
+        className={`${sizes[size]} border-[#E5E7EB] border-t-[#03045E] rounded-full animate-spin`}
       />
     </div>
   )
 
   if (fullScreen) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center space-y-4">
           {spinner}
-          <p className="text-sm text-gray-600 animate-pulse">Loading...</p>
+          <p className="text-sm text-[#475569] animate-pulse">Loading...</p>
         </div>
       </div>
     )

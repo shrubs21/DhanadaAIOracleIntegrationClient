@@ -64,7 +64,7 @@ router.post('/excel', async (req, res) => {
       // Export as table
       const { headers, rows } = tableData;
       
-      console.log(`✅ Detected table with ${headers.length} columns and ${rows.length} rows`);
+      console.log(` Detected table with ${headers.length} columns and ${rows.length} rows`);
       
       // Add headers with styling
       worksheet.addRow(headers);
@@ -145,7 +145,7 @@ router.post('/excel', async (req, res) => {
     res.send(buffer);
     
   } catch (error) {
-    console.error('❌ Excel export error:', error);
+    console.error(' Excel export error:', error);
     res.status(500).json({ error: 'Failed to generate Excel file' });
   }
 });
@@ -163,7 +163,7 @@ router.post('/pdf', async (req, res) => {
       return res.status(400).json({ error: 'Content is required' });
     }
 
-    console.log('📄 Generating PDF export for user:', req.user.id);
+    console.log(' Generating PDF export for user:', req.user.id);
 
     // Create PDF document
     const doc = new PDFDocument({

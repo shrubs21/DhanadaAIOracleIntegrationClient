@@ -18,3 +18,11 @@ CREATE TABLE IF NOT EXISTS messages (
 
 CREATE INDEX idx_conversations_user_id ON conversations(user_id);
 CREATE INDEX idx_messages_conversation_id ON messages(conversation_id);
+
+-- Add updated_at column to conversations table
+ALTER TABLE conversations 
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
+UPDATE conversations 
+SET updated_at = created_at 
+WHERE updated_at IS NULL;

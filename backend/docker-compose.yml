@@ -1,9 +1,10 @@
 version: "3.9"
 
 services:
+  # -------------------- DATABASE --------------------
   postgres:
     image: postgres:15
-    container_name: oracle-ai-postgres
+    container_name: oracle-ai-postgresss
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -21,9 +22,10 @@ services:
       timeout: 5s
       retries: 5
 
+  # -------------------- REDIS --------------------
   redis:
     image: redis:7-alpine
-    container_name: oracle-ai-redis
+    container_name: oracle-ai-redisss
     restart: always
     ports:
       - "6379:6379"
@@ -37,11 +39,12 @@ services:
       timeout: 3s
       retries: 5
 
+  # -------------------- BACKEND API --------------------
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: oracle-ai-backend
+    container_name: oracle-ai-backenddd
     restart: always
     depends_on:
       postgres:
@@ -61,20 +64,28 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       NODE_ENV: production
+      MCP_URL: http://mcp-server:5001/mcp
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
     volumes:
       - ./logs:/app/logs
 
+  # -------------------- WORKER --------------------
   worker:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    container_name: oracle-ai-worker
+    container_name: oracle-ai-workerrr
     restart: always
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mcp-server:
+        condition: service_started
     env_file:
       - .env
     environment:
@@ -85,10 +96,41 @@ services:
       DB_NAME: oracle_ai
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      MCP_URL: http://mcp-server:5001/mcp
       NODE_ENV: production
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
     volumes:
       - ./logs:/app/logs
+      - ./uploads:/app/uploads
 
+  # -------------------- MCP SERVER --------------------
+  mcp-server:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+    container_name: oracle-ai-mcp
+    restart: always
+    ports:
+      - "5001:5001"
+    env_file:
+      - ./mcp-server/.env
+    environment:
+      NODE_ENV: production
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    depends_on:
+      redis:
+        condition: service_healthy
+
+# -------------------- VOLUMES --------------------
 volumes:
   pg_data:
   redis_data:
