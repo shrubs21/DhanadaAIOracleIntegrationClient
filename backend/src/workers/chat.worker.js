@@ -2,14 +2,13 @@ import Redis from "ioredis";
 import pool from "../config/db.js";
 import { oracleToolSchema } from "../llm/tools/oracle.tool.schema.js";
 import { SYSTEM_PROMPT } from "../llm/system-prompt.js";
-import { isInvoiceQuery, handleInvoiceQuery } from '../agents/Invoice.handler.js';
-
 
 /* -------------------------------------------------
    ENV
 -------------------------------------------------- */
 const MCP_URL = process.env.MCP_URL || "http://mcp-server:5001/mcp";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const N8N_INVOICE_WEBHOOK = process.env.N8N_INVOICE_WEBHOOK || "http://n8n:5678/webhook/invoice-agent";
 
 /* -------------------------------------------------
    REDIS (WORKER CONNECTION)
@@ -80,28 +79,28 @@ function buildIntentAwareQuery(originalQuery, intent) {
 }
 
 /* -------------------------------------------------
-   ✅ EXTRACT USER-REQUESTED LIMIT
+   EXTRACT USER-REQUESTED LIMIT
 -------------------------------------------------- */
 function extractUserLimit(prompt) {
   const p = prompt.toLowerCase();
-  
-  // Check for "all" first
-  if (p.includes("all employees") || 
-      p.includes("all absences") || 
-      p.includes("all suppliers") ||
-      p.includes("all invoices") ||
-      p.includes("show all") ||
-      p.includes("list all")) {
+
+  if (
+    p.includes("all employees") ||
+    p.includes("all absences") ||
+    p.includes("all suppliers") ||
+    p.includes("all invoices") ||
+    p.includes("show all") ||
+    p.includes("list all")
+  ) {
     return "ALL";
   }
-  
-  // Extract number patterns
+
   const patterns = [
     /\b(first|top|show|list)\s+(\d+)\s+(employees?|records?|people|absences?|suppliers?|invoices?)\b/i,
     /\b(\d+)\s+(employees?|records?|people|absences?|suppliers?|invoices?)\b/i,
     /\blimit\s+(\d+)\b/i
   ];
-  
+
   for (const pattern of patterns) {
     const match = p.match(pattern);
     if (match) {
@@ -111,13 +110,12 @@ function extractUserLimit(prompt) {
       }
     }
   }
-  
+
   return null;
 }
 
 /* -------------------------------------------------
-   ✅ TOKEN FIREWALL - HARD CAP AT 5 RECORDS
-   LLM ALWAYS SEES MAX 5 SAMPLES
+   TOKEN FIREWALL - HARD CAP AT 5 RECORDS
 -------------------------------------------------- */
 function buildLLMSafeResult(toolResult, prompt = "") {
   if (!toolResult || !Array.isArray(toolResult.data)) {
@@ -128,17 +126,14 @@ function buildLLMSafeResult(toolResult, prompt = "") {
     };
   }
 
-  // ✅ HARD CAP: LLM ALWAYS SEES MAX 5 RECORDS
   const MAX = 5;
-
-  // ✅ Use toolResult.count (the REAL count from Oracle)
   const actualCount = toolResult.count || toolResult.data.length;
 
   return {
     success: true,
-    count: actualCount,  // ✅ Real count from Oracle
+    count: actualCount,
     summary: `Found ${actualCount} records. Showing top ${Math.min(MAX, toolResult.data.length)}. Full dataset available in table below.`,
-    sample: toolResult.data.slice(0, MAX),  // ✅ Only 5 samples
+    sample: toolResult.data.slice(0, MAX),
     hasMore: actualCount > MAX
   };
 }
@@ -148,22 +143,17 @@ function buildLLMSafeResult(toolResult, prompt = "") {
 -------------------------------------------------- */
 function filterAbsences(absences, query) {
   const q = query.toLowerCase();
-  
-  // Extract employee number if specified
+
   const empMatch = q.match(/\b\d{4,6}\b/);
   const employeeNumber = empMatch ? empMatch[0] : null;
-  
-  // Check if last month is requested
   const isLastMonth = q.includes("last month");
-  
+
   let filtered = absences;
-  
-  // Filter by employee if specified
+
   if (employeeNumber) {
     filtered = filtered.filter(a => a.personNumber === employeeNumber);
   }
-  
-  // Filter by date range (last month)
+
   if (isLastMonth) {
     const now = new Date();
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
@@ -172,21 +162,20 @@ function filterAbsences(absences, query) {
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
       .toISOString()
       .split("T")[0];
-    
+
     filtered = filtered.filter(a => {
       const startDate = a.startDate;
       const endDate = a.endDate;
       return startDate >= startOfLastMonth && endDate <= endOfLastMonth;
     });
   }
-  
-  // Apply limit if specified
-  let limit = 50; // default
+
+  let limit = 50;
   if (q.includes("first 10")) limit = 10;
   else if (q.includes("first 20")) limit = 20;
   else if (q.includes("first 50")) limit = 50;
   else if (q.includes("first 100")) limit = 100;
-  
+
   return {
     filtered: filtered.slice(0, limit),
     totalCount: filtered.length,
@@ -199,7 +188,7 @@ function filterAbsences(absences, query) {
 -------------------------------------------------- */
 function reducePayrollData(data, limit = 5) {
   if (!data || !Array.isArray(data)) return [];
-  
+
   return data
     .slice(0, limit)
     .map(p => ({
@@ -246,38 +235,23 @@ function isGeneralQuestion(text) {
   const q = text.toLowerCase();
 
   const generalKeywords = [
-    // concepts
     "what is", "what are", "explain", "define",
     "how to", "how does", "tell me about", "describe",
-    
-    // OS / infra
     "linux", "windows", "mac", "ubuntu", "centos",
     "docker", "kubernetes", "k8s", "container",
-    
-    // programming
     "code", "example", "sample", "syntax",
     "function", "class", "script", "program",
     "algorithm", "tutorial", "guide",
-    
-    // languages
     "javascript", "node", "nodejs", "python",
     "java", "c++", "c#", "php", "ruby",
     "react", "nextjs", "angular", "vue",
     "html", "css", "typescript",
-    
-    // databases
     "sql", "postgres", "mysql", "mongodb",
     "query", "table", "index", "database",
-    
-    // APIs
     "api", "rest", "http", "json", "xml",
     "oauth", "jwt", "authentication", "authorization",
-    
-    // devops
     "ci/cd", "pipeline", "github", "gitlab",
     "git", "dockerfile", "yaml", "jenkins",
-    
-    // misc tech
     "error", "bug", "fix", "issue", "debug",
     "install", "setup", "configure", "deploy"
   ];
@@ -286,10 +260,76 @@ function isGeneralQuestion(text) {
 }
 
 /* -------------------------------------------------
+   INVOICE INTENT DETECTION
+-------------------------------------------------- */
+function isInvoiceIntent(text) {
+  const t = text.toLowerCase();
+
+  const keywords = [
+    "invoice",
+    "create invoice",
+    "new invoice",
+    "submit invoice",
+    "invoice status",
+    "track invoice",
+    "payable invoice"
+  ];
+
+  return keywords.some(k => t.includes(k));
+}
+
+/* -------------------------------------------------
+   STREAM HELPER
+-------------------------------------------------- */
+async function streamResponse(conversationId, text) {
+  const streamKey = `stream:${conversationId}`;
+  const words = text.split(" ");
+
+  for (let i = 0; i < words.length; i++) {
+    await redis.rpush(streamKey, JSON.stringify({
+      token: words[i] + (i < words.length - 1 ? " " : ""),
+      done: false
+    }));
+    await new Promise(resolve => setTimeout(resolve, 15));
+  }
+
+  await redis.rpush(streamKey, JSON.stringify({ done: true }));
+  await redis.expire(streamKey, 120);
+}
+
+/* -------------------------------------------------
+   DB STORE HELPER
+-------------------------------------------------- */
+async function storeMessages(conversationId, userPrompt, assistantReply, fileInfo = null) {
+  await pool.query(
+    `INSERT INTO messages (conversation_id, role, content) VALUES ($1, 'user', $2)`,
+    [conversationId, userPrompt]
+  );
+
+  await pool.query(
+    `INSERT INTO messages (conversation_id, role, content, file_url, file_name, file_format)
+     VALUES ($1, 'assistant', $2, $3, $4, $5)`,
+    [
+      conversationId,
+      assistantReply,
+      fileInfo?.fileUrl || null,
+      fileInfo?.fileName || null,
+      fileInfo?.fileFormat || null
+    ]
+  );
+}
+
+/* -------------------------------------------------
    PROCESS SINGLE CHAT JOB
 -------------------------------------------------- */
 async function processChatJob(job) {
   const { conversationId, userId, prompt } = job;
+
+  // SAFETY GUARD - must be FIRST before any Redis calls
+  if (!conversationId) {
+    console.error("❌ Missing conversationId in job:", job);
+    return;
+  }
 
   console.log("=".repeat(60));
   console.log(`Processing chat for conversation ${conversationId}`);
@@ -297,126 +337,90 @@ async function processChatJob(job) {
   console.log(`Prompt: ${prompt}`);
   console.log("=".repeat(60));
 
-  /* 🔒 WIZARD LOCK CHECK - MUST BE FIRST */
-  const wizardLock = await redis.get(`invoice:wizard:lock:${conversationId}`);
+  /* -------------------------------------------------
+     INVOICE → N8N SESSION LOCK
+     NOTE: No expiry - session is permanent until user
+     explicitly types "exit invoice"
+  -------------------------------------------------- */
+  const invoiceSessionKey = `invoice:session:${conversationId}`;
+  const isInvoiceSessionActive = await redis.get(invoiceSessionKey);
 
-  if (wizardLock === "active") {
-    console.log("🔒 Wizard lock active → routing to invoice wizard");
-    
-    const invoiceResult = await handleInvoiceQuery({
-      prompt,
-      conversationId,
-      userId,
-      redis,
-      openRouterKey: OPENROUTER_API_KEY,
-      mcpUrl: MCP_URL
-    });
+  // ─── EXIT INVOICE SESSION ───────────────────────────
+  if (prompt.toLowerCase() === "exit invoice") {
+    console.log("🚪 Exit invoice command received");
+    await redis.del(invoiceSessionKey);
 
-    // Store messages
-    await pool.query(
-      `INSERT INTO messages (conversation_id, role, content)
-       VALUES ($1, 'user', $2)`,
-      [conversationId, prompt]
-    );
+    const exitReply = "Invoice session closed. You can continue normal chat.";
 
-    await pool.query(
-      `INSERT INTO messages (conversation_id, role, content)
-       VALUES ($1, 'assistant', $2)`,
-      [conversationId, invoiceResult.answer]
-    );
-
-    // Stream response
-    const streamKey = `stream:${conversationId}`;
-    const words = invoiceResult.answer.split(" ");
-
-    for (let i = 0; i < words.length; i++) {
-      await redis.rpush(streamKey, JSON.stringify({
-        token: words[i] + (i < words.length - 1 ? " " : ""),
-        done: false
-      }));
-      await new Promise(resolve => setTimeout(resolve, 20));
-    }
-
-    await redis.rpush(streamKey, JSON.stringify({ 
-      done: true,
-      actualData: invoiceResult.data || null,
-      actualCount: invoiceResult.count || 0,
-      invoiceType: invoiceResult.type,
-      invoiceDraft: invoiceResult.draft || null
-    }));
-
-    await redis.expire(streamKey, 120);
-
-    console.log("Wizard routing completed ✅");
-    console.log("=".repeat(60));
-    return; // ✅ CRITICAL: Stop processing
+    await storeMessages(conversationId, prompt, exitReply);
+    await streamResponse(conversationId, exitReply);
+    return;
   }
 
-  /* ✅ INVOICE COPILOT DETECTION */
-  if (isInvoiceQuery(prompt)) {
-    console.log("📋 Invoice query detected - routing to Invoice Copilot");
-    
+  // ─── INVOICE SESSION ACTIVE → ROUTE TO N8N ──────────
+  if (isInvoiceSessionActive === "active") {
+    console.log("🔒 Invoice session active → routing to n8n");
+
     try {
-      const invoiceResult = await handleInvoiceQuery({
-        prompt,
-        conversationId,
-        userId,
-        redis,
-        openRouterKey: OPENROUTER_API_KEY,
-        mcpUrl: MCP_URL
+      const response = await fetch(N8N_INVOICE_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId, userId, message: prompt })
       });
 
-      // Store user message
-      await pool.query(
-        `INSERT INTO messages (conversation_id, role, content)
-         VALUES ($1, 'user', $2)`,
-        [conversationId, prompt]
-      );
+      const data = await response.json();
+      const agentReply = data.response || data.message || "Invoice agent response received.";
 
-      // Store assistant response
-      await pool.query(
-        `INSERT INTO messages (conversation_id, role, content)
-         VALUES ($1, 'assistant', $2)`,
-        [conversationId, invoiceResult.answer]
-      );
+      await storeMessages(conversationId, prompt, agentReply);
+      await streamResponse(conversationId, agentReply);
+    } catch (n8nError) {
+      console.error("❌ n8n fetch error (session active):", n8nError.message);
+      const errReply = "⚠️ Invoice agent is unavailable right now. Please try again.";
 
-      // Stream response to UI
-      const streamKey = `stream:${conversationId}`;
-      const words = invoiceResult.answer.split(" ");
-      
-      console.log(`Streaming invoice response (${words.length} tokens)...`);
-
-      for (let i = 0; i < words.length; i++) {
-        await redis.rpush(streamKey, JSON.stringify({
-          token: words[i] + (i < words.length - 1 ? " " : ""),
-          done: false
-        }));
-        
-        await new Promise(resolve => setTimeout(resolve, 20));
-      }
-
-      // Send completion with invoice data
-      await redis.rpush(streamKey, JSON.stringify({ 
-        done: true,
-        actualData: invoiceResult.data || null,
-        actualCount: invoiceResult.count || 0,
-        invoiceType: invoiceResult.type, // wizard, confirmation, success, etc.
-        invoiceDraft: invoiceResult.draft || null // For wizard steps
-      }));
-
-      await redis.expire(streamKey, 120);
-
-      console.log("Invoice Copilot completed ✅");
-      console.log("=".repeat(60));
-      
-      return; // ✅ CRITICAL: Early return - don't process as normal query
-      
-    } catch (invoiceError) {
-      console.error("Invoice Copilot Error:", invoiceError);
-      // Fall through to normal processing if invoice copilot fails
+      await storeMessages(conversationId, prompt, errReply);
+      await streamResponse(conversationId, errReply);
     }
+
+    return;
   }
-  /* ✅ END INVOICE COPILOT */
+
+  // ─── FIRST TIME INVOICE DETECTION ───────────────────
+  if (isInvoiceIntent(prompt)) {
+    console.log("🧾 Invoice detected → starting n8n agent session");
+    console.log("   Invoice session key:", invoiceSessionKey);
+
+    // ✅ NO EXPIRY - session is permanent until "exit invoice"
+    await redis.set(invoiceSessionKey, "active");
+    console.log("   ✅ Redis session lock set (NO EXPIRY - permanent until exit)");
+
+    try {
+      const response = await fetch(N8N_INVOICE_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId, userId, message: prompt })
+      });
+
+      const data = await response.json();
+      const agentReply = data.response || data.message || "Invoice agent started.";
+      const firstMessage = `🧾 Invoice assistant activated.\n\n${agentReply}\n\n⚠️ Don't worry 😊 If your question is unrelated, start a new chat.\n\nType **"exit invoice"** to end the invoice session.`;
+
+      await storeMessages(conversationId, prompt, firstMessage);
+      await streamResponse(conversationId, firstMessage);
+    } catch (n8nError) {
+      console.error("❌ n8n fetch error (first trigger):", n8nError.message);
+      // Clear the lock if n8n is unreachable
+      await redis.del(invoiceSessionKey);
+      const errReply = "⚠️ Invoice agent could not be reached. Please try again.";
+
+      await storeMessages(conversationId, prompt, errReply);
+      await streamResponse(conversationId, errReply);
+    }
+
+    return;
+  }
+  /* -------------------------------------------------
+     END INVOICE → N8N ROUTING
+  -------------------------------------------------- */
 
   /* 1. LOAD CONVERSATION HISTORY */
   const history = await pool.query(
@@ -507,14 +511,12 @@ Interpret this as a modification of the previous request.
   /* 3. TOOL CALLS (HANDLE ALL OF THEM) */
   if (choice.tool_calls && choice.tool_calls.length > 0) {
     console.log(`LLM Decided to Call ${choice.tool_calls.length} Tool(s)`);
-    
+
     const toolResponses = [];
 
-    // Load merged intent for query building
     const currentIntentRaw = await redis.get(`intent:${conversationId}`);
     const currentIntent = currentIntentRaw ? JSON.parse(currentIntentRaw) : null;
 
-    // Loop through ALL tool calls
     for (const toolCall of choice.tool_calls) {
       const args = JSON.parse(toolCall.function.arguments);
 
@@ -528,7 +530,6 @@ Interpret this as a modification of the previous request.
       }
 
       try {
-        // Build intent-aware query
         const intentAwareQuery = isFollowUpPrompt(prompt) && currentIntent
           ? buildIntentAwareQuery(args.query, currentIntent)
           : args.query;
@@ -539,7 +540,6 @@ Interpret this as a modification of the previous request.
           console.log("   Intent-aware:", intentAwareQuery);
         }
 
-        // Call MCP server
         const mcpPayload = {
           userId,
           product: args.product,
@@ -553,7 +553,7 @@ Interpret this as a modification of the previous request.
         };
 
         console.log("Calling MCP Server...");
-        
+
         const mcpResponse = await fetch(MCP_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -566,49 +566,43 @@ Interpret this as a modification of the previous request.
         }
 
         const mcpResult = await mcpResponse.json();
-        
-        // Parse MCP content string
+
         let toolResult;
-        if (mcpResult.content && typeof mcpResult.content === 'string') {
+        if (mcpResult.content && typeof mcpResult.content === "string") {
           console.log("Parsing MCP content string...");
           toolResult = JSON.parse(mcpResult.content);
         } else {
           toolResult = mcpResult;
         }
-        
+
         console.log("MCP Response Received");
         console.log(`   Count: ${toolResult.count || 0}`);
         console.log(`   Data length: ${toolResult.data?.length || 0}`);
-        
-        // Check what we got
+
         if (toolResult.error) {
           console.log("MCP returned error:", toolResult.error);
           throw new Error(toolResult.error);
         }
-        
-        // ✅ CRITICAL FIX: Store FULL dataset BEFORE any processing
-        const fullData = Array.isArray(toolResult.data) 
-          ? [...toolResult.data]  // ✅ Copy full array
+
+        const fullData = Array.isArray(toolResult.data)
+          ? [...toolResult.data]
           : [];
-        
+
         const actualCount = toolResult.count || fullData.length;
-        
+
         console.log("✅ Full dataset captured BEFORE firewall:");
         console.log(`   Full data length: ${fullData.length}`);
         console.log(`   Actual count from Oracle: ${actualCount}`);
-        
-        // ✅ EXTRACT USER LIMIT
+
         const userLimit = extractUserLimit(prompt);
         console.log(`✅ User Limit Detection:`);
         console.log(`   Requested: ${userLimit === "ALL" ? "ALL records" : userLimit || "Default (no limit)"}`);
-        
-        // ✅ DETERMINE DISPLAY DATA
+
         let displayData = fullData;
         let displayCount = actualCount;
-        
-        // ✅ Apply user limit (EXCEPT for payroll - security hard-cap)
+
         const isPayrollQuery = args.query.toLowerCase().includes("payroll");
-        
+
         if (!isPayrollQuery && userLimit && userLimit !== "ALL") {
           displayData = fullData.slice(0, userLimit);
           displayCount = displayData.length;
@@ -620,38 +614,34 @@ Interpret this as a modification of the previous request.
         } else {
           console.log(`✅ No user limit detected: showing all ${actualCount} records`);
         }
-        
-        // ABSOLUTE PAYROLL HARD STOP (BEFORE ANY OTHER PROCESSING)
+
         if (isPayrollQuery && Array.isArray(toolResult.data)) {
           console.log("⚠️  Payroll hard-stop applied (security cap)");
           console.log(`   Before: ${toolResult.data.length} records`);
-          
+
           toolResult.data = reducePayrollData(toolResult.data, 5);
           displayData = toolResult.data;
           displayCount = displayData.length;
           toolResult.count = displayCount;
           toolResult.hasMore = false;
-          
+
           console.log(`   After: ${displayCount} records (hard-capped for security)`);
         }
-        
-        // CLIENT-SIDE FILTERING FOR ABSENCES
+
         if (toolResult.data && Array.isArray(toolResult.data) && args.query.toLowerCase().includes("absence")) {
           console.log("Applying client-side filtering for absences...");
           const filterResult = filterAbsences(toolResult.data, args.query);
-          
+
           console.log(`Filter Results:`);
           console.log(`   Total absences: ${toolResult.data.length}`);
           console.log(`   After filtering: ${filterResult.totalCount}`);
           console.log(`   Limit applied: ${filterResult.limitApplied}`);
           console.log(`   Returned: ${filterResult.filtered.length}`);
-          
-          // Update displayData with filtered data
+
           displayData = filterResult.filtered;
           displayCount = displayData.length;
         }
-        
-        // Handle different response types
+
         if (toolResult.type === "pdf_download") {
           console.log("PDF Download Request");
           console.log("   Employee ID:", toolResult.downloadRequest?.employeeId);
@@ -673,14 +663,11 @@ Interpret this as a modification of the previous request.
           console.log("Count:", toolResult.count, "records");
         }
 
-        // ✅ UPDATE toolResult with display data (for UI)
         toolResult.data = displayData;
         toolResult.count = displayCount;
-        
-        // Store last tool result for UI rendering
+
         lastToolResult = toolResult;
 
-        /* MERGE INTENT (DO NOT OVERWRITE) */
         const newIntent = extractIntent(prompt);
 
         const previousIntentRaw = await redis.get(`intent:${conversationId}`);
@@ -713,7 +700,6 @@ Interpret this as a modification of the previous request.
 
         console.log("Intent merged & stored:", JSON.stringify(mergedIntent));
 
-        // ✅ APPLY TOKEN FIREWALL (for LLM only)
         const llmSafe = buildLLMSafeResult(toolResult, prompt);
 
         console.log(`✅ Token Safety Applied:`);
@@ -722,42 +708,40 @@ Interpret this as a modification of the previous request.
         console.log(`   UI will show: ${displayCount} records`);
         console.log(`   LLM will see: ${llmSafe.sample?.length || 0} samples`);
 
-        // ✅ CRITICAL: Send llmSafe (5 samples) to LLM, NEVER raw toolResult
         toolResponses.push({
           role: "tool",
           tool_call_id: toolCall.id,
           name: toolCall.function.name,
           content: JSON.stringify(
-            toolResult.type === "file_download" 
+            toolResult.type === "file_download"
               ? {
                   success: true,
                   message: "File generated successfully",
                   fileName: toolResult.fileName || "document.pdf",
                   fileFormat: args.fileFormat || "PDF"
                 }
-              : llmSafe  // ✅ ALWAYS llmSafe (5 samples), never raw data
+              : llmSafe
           )
         });
 
-        // ✅ CRITICAL FIX: Store FULL dataset in Redis (use fullData, not displayData)
         if (fullData.length > 30) {
           console.log("✅ Large dataset detected → storing FULL dataset in Redis");
           console.log(`   Full dataset size: ${fullData.length} records`);
           console.log(`   Actual count: ${actualCount}`);
           console.log(`   User will see: ${displayCount} records in UI`);
-          
+
           await redis.set(
             `data:${conversationId}`,
             JSON.stringify({
-              data: fullData,        // ✅ FULL DATASET (all records from Oracle)
-              count: actualCount,    // ✅ FULL COUNT
-              displayCount: displayCount,  // ✅ What user requested
-              userLimit: userLimit   // ✅ Store user's request
+              data: fullData,
+              count: actualCount,
+              displayCount: displayCount,
+              userLimit: userLimit
             }),
             "EX",
-            600  // 10 minutes
+            600
           );
-          
+
           console.log(`   ✅ Stored ${fullData.length} records in Redis`);
           console.log("   Frontend will load table automatically");
         } else {
@@ -767,15 +751,13 @@ Interpret this as a modification of the previous request.
       } catch (toolError) {
         console.error(`Tool Execution Error for ${toolCall.id}:`, toolError.message);
         console.error(toolError.stack);
-        
-        // Clean error message (no JSON dumps)
+
         const cleanErrorMessage = toolError.message.includes("maximum context length")
           ? "Data request too large. Please try a smaller query."
           : toolError.message.includes("integration not found")
           ? "Oracle connection unavailable. Please check settings."
           : "Unable to fetch data. Please try again.";
-        
-        // Still add a tool response, but with minimal error
+
         toolResponses.push({
           role: "tool",
           tool_call_id: toolCall.id,
@@ -793,23 +775,19 @@ Interpret this as a modification of the previous request.
     console.log(`Processed ${toolResponses.length} tool call(s)`);
 
     try {
-      /* 4. SECOND LLM CALL WITH ALL TOOL RESULTS */
       console.log("Sending all tool results back to LLM for final response...");
-      
-      // Get display count for decision
+
       const displayCount = lastToolResult?.count || lastToolResult?.data?.length || 0;
-      
-      // CRITICAL - Fresh context for large datasets (BUT NOT for follow-ups)
+
       let contextMessages;
       const hasLargeDataset = displayCount > 20 && !isFollowUpPrompt(prompt);
-      
+
       if (hasLargeDataset) {
         console.log("Large dataset detected - resetting LLM context (no history)");
         console.log(`   Dataset size: ${displayCount} records`);
         console.log(`   Sample sent to LLM: ${toolResponses[0] ? JSON.parse(toolResponses[0].content).sample?.length || 0 : 0} records`);
         console.log(`   Strategy: Fresh context (user prompt + tool results only)`);
-        
-        // RESET CONTEXT - No history
+
         contextMessages = [
           SYSTEM_PROMPT,
           { role: "user", content: effectivePrompt },
@@ -823,7 +801,7 @@ Interpret this as a modification of the previous request.
         if (isFollowUpPrompt(prompt)) {
           console.log("   Follow-up detected - keeping context for natural conversation");
         }
-        
+
         contextMessages = [
           SYSTEM_PROMPT,
           ...messages.slice(1),
@@ -831,22 +809,21 @@ Interpret this as a modification of the previous request.
           ...toolResponses
         ];
       }
-      
+
       const second = await callOpenAI({
         messages: contextMessages
       });
 
       finalAnswer = second.choices[0].message.content;
 
-      // ✅ Smart response for large datasets (>30 records)
       if (displayCount > 30) {
         const userLimit = extractUserLimit(prompt);
-        const limitMsg = userLimit === "ALL" 
-          ? `all ${displayCount} records` 
-          : userLimit 
-            ? `${displayCount} records (as requested)` 
+        const limitMsg = userLimit === "ALL"
+          ? `all ${displayCount} records`
+          : userLimit
+            ? `${displayCount} records (as requested)`
             : `${displayCount} records`;
-        
+
         finalAnswer = `✅ Found ${limitMsg} from Oracle.
 
 ⚠️ Dataset is too large to display in chat.
@@ -867,9 +844,8 @@ You can also ask me to filter:
 - "Show employee 1054"`;
       }
 
-      // If file was generated, append download button
       if (fileDownloadInfo) {
-        finalAnswer += `\n\n📄 **File Ready for Download**\n\n**File Details:**\n- Name: ${fileDownloadInfo.fileName}\n- Format: ${fileDownloadInfo.fileFormat}\n- Size: ${fileDownloadInfo.fileSize || 'N/A'}\n\n[Download ${fileDownloadInfo.fileFormat}](${fileDownloadInfo.fileUrl})`;
+        finalAnswer += `\n\n📄 **File Ready for Download**\n\n**File Details:**\n- Name: ${fileDownloadInfo.fileName}\n- Format: ${fileDownloadInfo.fileFormat}\n- Size: ${fileDownloadInfo.fileSize || "N/A"}\n\n[Download ${fileDownloadInfo.fileFormat}](${fileDownloadInfo.fileUrl})`;
       }
 
       console.log("LLM Generated Final Response");
@@ -877,67 +853,44 @@ You can also ask me to filter:
     } catch (llmError) {
       console.error("LLM Final Response Error:", llmError.message);
       console.error(llmError.stack);
-      
-      // Clean fallback response
+
       if (llmError.message.includes("maximum context length")) {
         finalAnswer = `The dataset is too large to process. Please try:\n- Requesting fewer records\n- Querying a specific employee by ID\n- Narrowing your search criteria`;
       } else {
         finalAnswer = `I encountered an issue processing your request. Please try:\n- Simplifying your query\n- Starting a new conversation\n- Contacting support if the issue persists`;
       }
-      
+
       fileDownloadInfo = null;
     }
 
   } else {
-    // No tool call needed - direct answer from LLM
     finalAnswer = choice.content;
     console.log("LLM Answered Directly (No Tool Needed)");
   }
 
   /* 5. STORE MESSAGES */
   console.log("Storing messages in database...");
-  
-  // Clean up any poisoned error messages
+
   try {
     const cleanupResult = await pool.query(
-      `DELETE FROM messages 
-       WHERE conversation_id = $1 
-       AND role = 'assistant' 
+      `DELETE FROM messages
+       WHERE conversation_id = $1
+       AND role = 'assistant'
        AND (
-         content LIKE '%OpenRouter error%' 
+         content LIKE '%OpenRouter error%'
          OR content LIKE '%maximum context length%'
        )`,
       [conversationId]
     );
-    
+
     if (cleanupResult.rowCount > 0) {
       console.log(`Cleaned up ${cleanupResult.rowCount} poisoned error message(s)`);
     }
   } catch (cleanupError) {
     console.error("Error cleanup failed (non-critical):", cleanupError.message);
   }
-  
-  await pool.query(
-    `INSERT INTO messages (conversation_id, role, content)
-     VALUES ($1, 'user', $2)`,
-    [conversationId, prompt]
-  );
 
-  // ✅ Store actual data in message (for small datasets)
-  const actualData = lastToolResult?.data || null;
-  const actualCount = lastToolResult?.count || 0;
-
-  await pool.query(
-    `INSERT INTO messages (conversation_id, role, content, file_url, file_name, file_format)
-     VALUES ($1, 'assistant', $2, $3, $4, $5)`,
-    [
-      conversationId,
-      finalAnswer,
-      fileDownloadInfo?.fileUrl || null,
-      fileDownloadInfo?.fileName || null,
-      fileDownloadInfo?.fileFormat || null
-    ]
-  );
+  await storeMessages(conversationId, prompt, finalAnswer, fileDownloadInfo);
 
   console.log("Messages stored successfully");
   if (fileDownloadInfo) {
@@ -947,7 +900,7 @@ You can also ask me to filter:
   /* 6. STREAM TO UI */
   const streamKey = `stream:${conversationId}`;
   const words = finalAnswer.split(" ");
-  
+
   console.log(`Streaming response to UI (${words.length} tokens)...`);
 
   for (let i = 0; i < words.length; i++) {
@@ -955,30 +908,25 @@ You can also ask me to filter:
       token: words[i] + (i < words.length - 1 ? " " : ""),
       done: false
     }));
-    
+
     await new Promise(resolve => setTimeout(resolve, 20));
   }
 
-  // Get display count for frontend flags
   const displayCount = lastToolResult?.count || lastToolResult?.data?.length || 0;
+  const actualData = lastToolResult?.data || null;
+  const actualCount = lastToolResult?.count || 0;
 
-  // ✅ Send table flags + ACTUAL DATA to frontend
-  await redis.rpush(streamKey, JSON.stringify({ 
+  await redis.rpush(streamKey, JSON.stringify({
     done: true,
     fileInfo: fileDownloadInfo,
-    
-    // ✅ Tell frontend to load table (use display count)
     shouldLoadTable: displayCount > 30,
     recordCount: displayCount,
-    
-    // ✅ NEW: Include actual data for small datasets (<= 30 records)
     actualData: displayCount > 0 && displayCount <= 30 ? actualData : null,
     actualCount: actualCount
   }));
 
-  // ✅ Set expiration on stream and intent keys
-  await redis.expire(streamKey, 120);  // 2 minutes
-  await redis.expire(`intent:${conversationId}`, 600);  // 10 minutes
+  await redis.expire(streamKey, 120);
+  await redis.expire(`intent:${conversationId}`, 600);
 
   console.log("Streaming completed");
   console.log(`✅ Stream expires in 120s, Intent expires in 600s`);
@@ -1001,50 +949,29 @@ async function startWorker() {
   console.log("\n🚀 Capabilities:");
   console.log("   ✅ Oracle HCM queries (employees, payroll, leave, performance)");
   console.log("   ✅ Oracle ERP queries (suppliers, invoices, POs, payments)");
-  console.log("   ✅ 📋 INVOICE COPILOT (LLM-powered wizard)");
+  console.log("   ✅ 🧾 INVOICE → N8N AGENT (session-locked routing)");
   console.log("   ✅ General tech questions & code examples");
-  console.log("   ✅ Beautiful card-based formatting");
   console.log("   ✅ Smart query limits (10, 20, 50, 100, all)");
   console.log("   ✅ PDF/ZIP download support");
   console.log("   ✅ Multi-tool-call handling");
-  console.log("   ✅ Analytics & insights");
-  console.log("\n🔒 PRODUCTION FIXES APPLIED:");
-  console.log("   ✅ FIX 1: Oracle NEXT-LINK pagination (no more offset)");
-  console.log("   ✅ FIX 2: callOracleAPI fullUrl support");
-  console.log("   ✅ FIX 3: Store FULL dataset BEFORE firewall");
-  console.log("   ✅ FIX 4: ALWAYS use llmSafe (5 samples) to LLM");
-  console.log("   ✅ FIX 5: Redis key expiration (stream 120s, data 600s, intent 600s)");
-  console.log("   ✅ FIX 6: USER LIMIT EXTRACTION (10/20/50/all)");
-  console.log("   ✅ FIX 7: ACTUAL DATA PASSED TO FRONTEND");
+  console.log("\n🔒 INVOICE SESSION LOCK:");
+  console.log("   ✅ Invoice intent → triggers n8n webhook");
+  console.log("   ✅ Session is PERMANENT (no expiry) until user exits");
+  console.log("   ✅ ALL messages in session → routed to n8n");
+  console.log("   ✅ Type 'exit invoice' to end session");
+  console.log("   ✅ No LLM invoice logic - n8n owns the flow");
+  console.log("   ✅ All invoice messages stored in DB (user + assistant)");
   console.log("\n🛡️ TOKEN FIREWALL:");
   console.log("   ✅ LLM sees max 5 records ALWAYS");
   console.log("   ✅ Full dataset stored in Redis only if >30 records");
   console.log("   ✅ Frontend table auto-loads for large datasets");
-  console.log("   ✅ Chat commands: 'next page', 'page 5', etc.");
   console.log("\n🎯 USER LIMIT SUPPORT:");
   console.log("   ✅ 'show 10 employees' → UI shows 10");
-  console.log("   ✅ 'show 20 employees' → UI shows 20");
-  console.log("   ✅ 'show 50 employees' → UI shows 50 + table");
   console.log("   ✅ 'show all employees' → UI shows all");
-  console.log("   ✅ Works for: employees, absences, suppliers, invoices");
   console.log("   ✅ Payroll remains hard-capped at 5 (security)");
-  console.log("\n📊 DATA RENDERING:");
-  console.log("   ✅ Small datasets (≤30): Inline table in chat");
-  console.log("   ✅ Large datasets (>30): Full paginated table below");
-  console.log("   ✅ Actual data passed to frontend (no markdown parsing)");
   console.log("\n🧠 INTENT MEMORY:");
   console.log("   ✅ ChatGPT-like follow-ups ('show with email')");
   console.log("   ✅ Intent merging (fields accumulate, not replace)");
-  console.log("   ✅ Intent-aware query rewriting");
-  console.log("   ✅ Context preserved for follow-ups");
-  console.log("\n📋 INVOICE COPILOT FEATURES:");
-  console.log("   ✅ Natural language invoice creation");
-  console.log("   ✅ Multi-step wizard (guided workflow)");
-  console.log("   ✅ Smart entity extraction (supplier, amount, currency)");
-  console.log("   ✅ Confirmation before creating invoices");
-  console.log("   ✅ Session memory (draft preservation)");
-  console.log("   ✅ Invoice tracking and status queries");
-  console.log("   ✅ List/filter invoices (unpaid, by supplier, etc.)");
   console.log("=".repeat(60));
   console.log("Waiting for chat jobs...\n");
 
@@ -1059,7 +986,7 @@ async function startWorker() {
     } catch (err) {
       console.error("Worker Loop Error:", err.message);
       console.error(err.stack);
-      
+
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }

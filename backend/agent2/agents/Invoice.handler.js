@@ -2,16 +2,20 @@
  * ============================================
  * INVOICE HANDLER - LLM WIZARD WITH MEMORY
  * ============================================
- * Uses OpenAI at every step for intelligence
- * Maintains proper state memory in Redis
- * Best of both worlds!
+ * ✅ FIXED: Wizard stays active regardless of keywords
+ * ✅ FIXED: BusinessUnit enforcement
+ * ✅ FIXED: Tool name consistency (oracle_invoice_create)
+ * ✅ FIXED: Safe JSON parsing
+ * ✅ FIXED: Proper wizard boundaries (cancel only on explicit keywords)
+ * ✅ FIXED: Confirmation type consistency
+ * ✅ FIXED: InvoiceNumber extraction bulletproofing
  */
 
 import { InvoiceWizardLLM } from './wizard.llm.js';
 import { InvoiceAgent } from './invoice.agent.js';
 
 /**
- * Detect if query is invoice-related
+ * Detect if query is invoice-related (for initial routing only)
  */
 export function isInvoiceQuery(prompt) {
   const p = prompt.toLowerCase();
@@ -46,7 +50,6 @@ function isWizardStart(prompt) {
 function isNonWizardQuery(prompt) {
   const p = prompt.toLowerCase();
   
-  // These are NOT wizard starts
   if (p.includes('track') ||
       p.includes('status') ||
       p.includes('list') ||
@@ -79,7 +82,7 @@ export async function handleInvoiceQuery({
     console.log("=".repeat(60));
 
     // Initialize LLM wizard
-    const wizard = new InvoiceWizardLLM(redis, openRouterKey);
+    const wizard = new InvoiceWizardLLM(redis, openRouterKey, mcpUrl, userId);
 
     // Check if there's an active wizard
     const wizardState = await wizard.getWizardState(conversationId);
@@ -90,8 +93,20 @@ export async function handleInvoiceQuery({
       console.log(`   Draft: ${JSON.stringify(wizardState.draft)}`);
     }
 
-    // PRIORITY 1: If wizard is active, process through LLM wizard
+    // ✅ FIX: PRIORITY 1 - If wizard is active, ALWAYS route to wizard
     if (wizardState && wizardState.status !== 'completed') {
+      
+      // ✅ FIX: Check for explicit cancel words ONLY
+      const cancelWords = ['cancel', 'abort', 'exit', 'stop'];
+      if (cancelWords.some(w => prompt.toLowerCase().includes(w))) {
+        await wizard.clearWizard(conversationId);
+        await redis.del(`invoice:wizard:lock:${conversationId}`);
+        return {
+          type: 'text',
+          answer: '❌ Invoice creation cancelled. How else can I help?'
+        };
+      }
+      
       console.log("✅ Active wizard - processing with LLM intelligence");
       
       // Get conversation history for context
@@ -103,6 +118,24 @@ export async function handleInvoiceQuery({
         prompt,
         history
       );
+
+      // ✅ FIX: Enforce required fields before confirm/execute
+      const requiredFields = ['Supplier', 'InvoiceAmount', 'SupplierSite', 'BusinessUnit'];
+      
+      // ✅ FIX: Handle both 'confirmation' and 'confirm' types
+      if (result.type === 'confirmation' || result.type === 'confirm' || result.type === 'execute') {
+        const missing = requiredFields.filter(f => !result.draft?.[f]);
+
+        if (missing.length > 0) {
+          console.log(`⚠️ Missing required field: ${missing[0]}`);
+          return {
+            type: 'collect',
+            answer: `Please provide the ${missing[0]}`,
+            draft: result.draft,
+            missingFields: missing
+          };
+        }
+      }
 
       // Save to history
       await saveToHistory(redis, conversationId, 'user', prompt);
@@ -121,8 +154,6 @@ export async function handleInvoiceQuery({
 
         // Clear wizard state
         await wizard.clearWizard(conversationId);
-        
-        // ✅ FIX: Remove wizard lock
         await redis.del(`invoice:wizard:lock:${conversationId}`);
 
         const formatted = formatInvoiceResult(mcpResult, result.tool);
@@ -135,6 +166,12 @@ export async function handleInvoiceQuery({
           data: formatted.data,
           count: formatted.count,
         };
+      }
+      
+      // If error occurred, clear lock
+      if (result.type === 'error') {
+        console.log("❌ Error occurred - releasing wizard lock");
+        await redis.del(`invoice:wizard:lock:${conversationId}`);
       }
 
       // Save assistant response
@@ -153,7 +190,7 @@ export async function handleInvoiceQuery({
     if (isWizardStart(prompt) && !isNonWizardQuery(prompt)) {
       console.log("🆕 Starting LLM wizard");
       
-      // ✅ FIX: Activate wizard lock
+      // Activate wizard lock
       await redis.set(
         `invoice:wizard:lock:${conversationId}`,
         "active",
@@ -165,7 +202,6 @@ export async function handleInvoiceQuery({
       const history = await getConversationHistory(redis, conversationId);
       
       // Process initial message through LLM
-      // LLM might extract fields from "create invoice for Dell 5000"
       const result = await wizard.processWizardStep(
         conversationId,
         prompt,
@@ -183,30 +219,42 @@ export async function handleInvoiceQuery({
       };
     }
 
-    // PRIORITY 3: Non-wizard queries (list, track, FAQ)
-    console.log("📊 Non-wizard invoice query - using LLM agent");
-    
-    const agent = new InvoiceAgent({
-      redis,
-      openRouterKey,
-    });
+    // ✅ FIX: PRIORITY 3 - Only allow agent when NO wizard exists
+    if (!wizardState) {
+      console.log("📊 Non-wizard invoice query - using LLM agent");
+      
+      const agent = new InvoiceAgent({
+        redis,
+        openRouterKey,
+      });
 
-    const history = await agent.sessionManager.getHistory(userId, 5);
-    const decision = await agent.processQuery(userId, prompt, history);
+      const history = await agent.sessionManager.getHistory(userId, 5);
+      const decision = await agent.processQuery(userId, prompt, history);
 
-    await agent.sessionManager.addToHistory(userId, 'user', prompt);
+      await agent.sessionManager.addToHistory(userId, 'user', prompt);
 
-    return await executeInvoiceDecision({
-      decision,
-      conversationId,
-      userId,
-      redis,
-      mcpUrl,
-      agent
-    });
+      return await executeInvoiceDecision({
+        decision,
+        conversationId,
+        userId,
+        redis,
+        mcpUrl,
+        agent
+      });
+    }
+
+    // Fallback
+    return {
+      type: 'text',
+      answer: 'I can help with invoices. Try "create invoice" or "list invoices".',
+    };
 
   } catch (error) {
     console.error("Invoice Query Handler Error:", error);
+    
+    // Clear lock on fatal error
+    await redis.del(`invoice:wizard:lock:${conversationId}`);
+    
     return {
       type: 'error',
       answer: 'Sorry, I encountered an error with your invoice request.',
@@ -294,7 +342,6 @@ async function executeInvoiceDecision({
 
 /**
  * Execute invoice tool via MCP
- * ✅ FIX: Always use oracle_fetch with structured args
  */
 async function executeInvoiceTool({
   tool,
@@ -308,16 +355,16 @@ async function executeInvoiceTool({
   console.log("Params:", JSON.stringify(params, null, 2));
 
   try {
-    // ✅ FIX: Always send as oracle_fetch with structured args
+    // ✅ FIX: Use consistent tool name
     const mcpPayload = {
       userId,
       product: "ERP",
-      tool: "oracle_fetch",  // ✅ CRITICAL: Use oracle_fetch (not oracle_invoice_create)
+      tool: "oracle_invoice_create", // ✅ Changed from "oracle_fetch"
       args: {
         query: "create invoice",
         endpoint: "/invoices",
         method: "POST",
-        payload: params,  // ✅ Send full params as payload
+        payload: params,
         conversationId
       }
     };
@@ -338,10 +385,16 @@ async function executeInvoiceTool({
 
     const mcpResult = await mcpResponse.json();
 
+    // ✅ FIX: Safe JSON parsing
     let toolResult;
     if (mcpResult.content && typeof mcpResult.content === 'string') {
       console.log("Parsing MCP content...");
-      toolResult = JSON.parse(mcpResult.content);
+      try {
+        toolResult = JSON.parse(mcpResult.content);
+      } catch (parseError) {
+        console.error("JSON parse error:", parseError);
+        toolResult = { success: false, error: 'Invalid MCP response format' };
+      }
     } else {
       toolResult = mcpResult;
     }
@@ -389,7 +442,15 @@ function formatInvoiceResult(result, tool) {
       break;
 
     case 'oracle_invoice_create':
-      const invoiceNum = result.InvoiceNumber || result.data?.InvoiceNumber || 'Unknown';
+      // ✅ FIX: Bulletproof InvoiceNumber extraction
+      const invoiceNum =
+        result.InvoiceNumber ||
+        result.invoiceNumber ||
+        result.data?.InvoiceNumber ||
+        result.data?.invoiceNumber ||
+        result.data?.items?.[0]?.InvoiceNumber ||
+        'Generated successfully (check Oracle)';
+
       return {
         type: 'success',
         answer: `✅ **Invoice Created Successfully!**
@@ -405,13 +466,13 @@ Your invoice has been created in Oracle. You can track it anytime by asking:
       break;
   }
 
-  // Check if invoice was created
-  if (result.InvoiceNumber) {
+  // ✅ FIX: Fallback InvoiceNumber extraction
+  if (result.InvoiceNumber || result.invoiceNumber) {
     return {
       type: 'success',
       answer: `✅ **Invoice Created Successfully!**
 
-📋 **Invoice Number**: ${result.InvoiceNumber}
+📋 **Invoice Number**: ${result.InvoiceNumber || result.invoiceNumber}
 ✓ **Status**: ${result.ValidationStatus || 'Created'}
 
 Your invoice has been created in Oracle.`,

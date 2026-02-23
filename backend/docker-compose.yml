@@ -1,10 +1,11 @@
 version: "3.9"
 
 services:
+
   # -------------------- DATABASE --------------------
   postgres:
     image: postgres:15
-    container_name: oracle-ai-postgresss
+    container_name: oracle-ai-postgres
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -25,26 +26,24 @@ services:
   # -------------------- REDIS --------------------
   redis:
     image: redis:7-alpine
-    container_name: oracle-ai-redisss
+    container_name: oracle-ai-redis
     restart: always
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-      - ./redis.conf:/usr/local/etc/redis/redis.conf
-    command: redis-server /usr/local/etc/redis/redis.conf
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
 
-  # -------------------- BACKEND API --------------------
+  # -------------------- BACKEND --------------------
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: oracle-ai-backenddd
+    container_name: oracle-ai-backend
     restart: always
     depends_on:
       postgres:
@@ -63,12 +62,8 @@ services:
       DB_NAME: oracle_ai
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      NODE_ENV: production
       MCP_URL: http://mcp-server:5001/mcp
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-      - 1.1.1.1
+      NODE_ENV: production
     volumes:
       - ./logs:/app/logs
 
@@ -77,7 +72,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    container_name: oracle-ai-workerrr
+    container_name: oracle-ai-worker
     restart: always
     depends_on:
       postgres:
@@ -85,6 +80,8 @@ services:
       redis:
         condition: service_healthy
       mcp-server:
+        condition: service_started
+      n8n:
         condition: service_started
     env_file:
       - .env
@@ -99,10 +96,8 @@ services:
       MCP_URL: http://mcp-server:5001/mcp
       NODE_ENV: production
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-      - 1.1.1.1
+      # ✅ Correct Docker service name
+      N8N_INVOICE_WEBHOOK: http://n8n:5678/webhook/invoice-agent
     volumes:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
@@ -122,10 +117,31 @@ services:
       NODE_ENV: production
       REDIS_HOST: redis
       REDIS_PORT: 6379
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-      - 1.1.1.1
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # -------------------- N8N --------------------
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: oracle-ai-n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+
+      # ✅ CRITICAL FIX — use Docker service name
+      - WEBHOOK_URL=http://n8n:5678
+
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+    volumes:
+      - n8n_data:/home/node/.n8n
     depends_on:
       redis:
         condition: service_healthy
@@ -134,3 +150,4 @@ services:
 volumes:
   pg_data:
   redis_data:
+  n8n_data:

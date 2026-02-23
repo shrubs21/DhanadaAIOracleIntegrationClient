@@ -13,7 +13,7 @@ const redis = new Redis({
  * - GET, POST, PUT, PATCH, DELETE methods
  * - Oracle NEXT-LINK pagination (fullUrl mode)
  * - Standard endpoint + queryParams mode
- * - HCM and ERP products
+ * - HCM, ERP, MHI, and CRM products
  * - Dynamic authentication from Redis
  * - Invoice creation, payments, and all CRUD operations
  * 
@@ -22,6 +22,8 @@ const redis = new Redis({
  * ✅ FIX #2: Handles both absolute URLs and relative URLs
  * ✅ FIX #3: Supports standard endpoint + queryParams mode
  * ✅ FIX #4: Proper Oracle-specific headers for POST/PUT/PATCH
+ * ✅ FIX #5: Added CRM product support (/crmRestApi/resources/11.13.18.05)
+ * ✅ FIX #6: Added MHI product support in BOTH pagination and standard modes
  * 
  * @module oracle.client
  */
@@ -31,7 +33,7 @@ const redis = new Redis({
  * 
  * @param {Object} params
  * @param {number} params.userId - User ID for authentication
- * @param {string} params.product - Product (HCM or ERP)
+ * @param {string} params.product - Product (HCM, ERP, MHI, or CRM)
  * @param {string} [params.endpoint] - API endpoint (e.g., "/emps") - Standard mode
  * @param {Object} [params.queryParams] - Query parameters - Standard mode
  * @param {string} [params.fullUrl] - Full URL for pagination (Oracle next.href) - Pagination mode
@@ -63,19 +65,27 @@ const redis = new Redis({
  *   method: "POST",
  *   payload: { InvoiceNumber: "INV001", Amount: 5000 }
  * });
+ * 
+ * @example POST Request (Create CRM Organization)
+ * const result = await callOracleAPI({
+ *   userId: 1,
+ *   product: "CRM",
+ *   endpoint: "/hubOrganizations",
+ *   method: "POST",
+ *   payload: { OrganizationName: "Acme Corp" }
+ * });
  */
 export async function callOracleAPI({
   userId,
   product,
   endpoint,
   queryParams = {},
-  fullUrl,      // ✅ NEW: Support for Oracle NEXT-LINK pagination
+  fullUrl,      // ✅ Support for Oracle NEXT-LINK pagination
   method = "GET",
   payload = null
 }) {
   
   let url;
-  let skipAuth = false;
 
   // ✅ MODE 1: PAGINATION MODE (Oracle next.href)
   if (fullUrl) {
@@ -85,7 +95,6 @@ export async function callOracleAPI({
     // Example: "https://server.oracle.com/hcmRestApi/resources/11.13.18.05/emps?limit=200&offset=200"
     if (fullUrl.startsWith("http://") || fullUrl.startsWith("https://")) {
       url = fullUrl;
-      skipAuth = false; // Still need auth for absolute URLs
       console.log("   Absolute URL detected:", url);
     }
     // First call or relative URL: "/emps?limit=200"
@@ -93,11 +102,24 @@ export async function callOracleAPI({
       // Get base URL from Redis
       const { baseUrl } = await getOracleConfig(userId, product);
       
-      // Build full URL with product-specific path
-      const apiPath = product === "HCM" 
-        ? "/hcmRestApi/resources/11.13.18.05"
-        : "/fscmRestApi/resources/11.13.18.05";
-      
+      // ✅ Build product-specific API path (HCM / ERP / MHI / CRM)
+      let apiPath;
+      if (product === "HCM") {
+        apiPath = "/hcmRestApi/resources/11.13.18.05";
+      } 
+      else if (product === "ERP") {
+        apiPath = "/fscmRestApi/resources/11.13.18.05";
+      } 
+      else if (product === "MHI") {
+        // 🔥 MHI uses FSCM APIs (Procurement / Suppliers)
+        apiPath = "/fscmRestApi/resources/11.13.18.05";
+      } 
+      else if (product === "CRM") {
+        apiPath = "/crmRestApi/resources/11.13.18.05";
+      } 
+      else {
+        throw new Error("Invalid Oracle product type");
+      }
       url = `${baseUrl}${apiPath}${fullUrl}`;
       console.log("   Relative URL detected, building:", url);
     }
@@ -114,10 +136,24 @@ export async function callOracleAPI({
     // Get base URL from Redis
     const { baseUrl } = await getOracleConfig(userId, product);
     
-    // Build base URL with product-specific path
-    const apiPath = product === "HCM" 
-      ? "/hcmRestApi/resources/11.13.18.05"
-      : "/fscmRestApi/resources/11.13.18.05";
+    // ✅ Build product-specific API path (HCM / ERP / MHI / CRM)
+    let apiPath;
+    if (product === "HCM") {
+      apiPath = "/hcmRestApi/resources/11.13.18.05";
+    } 
+    else if (product === "ERP") {
+      apiPath = "/fscmRestApi/resources/11.13.18.05";
+    } 
+    else if (product === "MHI") {
+      // 🔥 MHI uses FSCM APIs (Procurement / Suppliers)
+      apiPath = "/fscmRestApi/resources/11.13.18.05";
+    } 
+    else if (product === "CRM") {
+      apiPath = "/crmRestApi/resources/11.13.18.05";
+    } 
+    else {
+      throw new Error("Invalid Oracle product type");
+    }
     
     url = `${baseUrl}${apiPath}${endpoint}`;
     
@@ -206,7 +242,7 @@ export async function callOracleAPI({
  * Helper function to get Oracle configuration from Redis
  * 
  * @param {number} userId - User ID
- * @param {string} product - Product (HCM or ERP)
+ * @param {string} product - Product (HCM, ERP, MHI, or CRM)
  * @returns {Promise<Object>} { username, password, baseUrl }
  * @throws {Error} If configuration not found
  */
@@ -345,15 +381,32 @@ export async function fetchAllPages({
  * Useful for debugging authentication issues
  * 
  * @param {number} userId - User ID
- * @param {string} product - Product (HCM or ERP)
+ * @param {string} product - Product (HCM, ERP, MHI, or CRM)
  * @returns {Promise<Object>} { success, message, data }
  */
 export async function testOracleConnection(userId, product) {
+  // Default test endpoints per product
+  const testEndpoints = {
+    HCM: "/emps",
+    ERP: "/suppliers",
+    MHI: "/suppliers",
+    CRM: "/hubOrganizations"
+  };
+
+  const testEndpoint = testEndpoints[product];
+  if (!testEndpoint) {
+    return {
+      success: false,
+      message: `❌ Unknown product: ${product}`,
+      error: `Product must be one of: HCM, ERP, MHI, CRM`
+    };
+  }
+
   try {
     const result = await callOracleAPI({
       userId,
       product,
-      endpoint: product === "HCM" ? "/emps" : "/suppliers",
+      endpoint: testEndpoint,
       queryParams: { limit: 1 }
     });
 
@@ -375,7 +428,7 @@ export async function testOracleConnection(userId, product) {
  * ✅ CREATE Helper - Simplified POST request
  * 
  * @param {number} userId - User ID
- * @param {string} product - Product (HCM or ERP)
+ * @param {string} product - Product (HCM, ERP, MHI, or CRM)
  * @param {string} endpoint - API endpoint
  * @param {Object} payload - Data to create
  * @returns {Promise<Object>} Created resource
@@ -384,6 +437,11 @@ export async function testOracleConnection(userId, product) {
  * const invoice = await createResource(1, "ERP", "/invoices", {
  *   InvoiceNumber: "INV001",
  *   Amount: 5000
+ * });
+ * 
+ * @example
+ * const org = await createResource(1, "CRM", "/hubOrganizations", {
+ *   OrganizationName: "Acme Corp"
  * });
  */
 export async function createResource(userId, product, endpoint, payload) {
@@ -400,7 +458,7 @@ export async function createResource(userId, product, endpoint, payload) {
  * ✅ UPDATE Helper - Simplified PUT/PATCH request
  * 
  * @param {number} userId - User ID
- * @param {string} product - Product (HCM or ERP)
+ * @param {string} product - Product (HCM, ERP, MHI, or CRM)
  * @param {string} endpoint - API endpoint
  * @param {Object} payload - Data to update
  * @param {string} [method="PATCH"] - HTTP method (PUT or PATCH)
@@ -425,7 +483,7 @@ export async function updateResource(userId, product, endpoint, payload, method 
  * ✅ DELETE Helper - Simplified DELETE request
  * 
  * @param {number} userId - User ID
- * @param {string} product - Product (HCM or ERP)
+ * @param {string} product - Product (HCM, ERP, MHI, or CRM)
  * @param {string} endpoint - API endpoint
  * @returns {Promise<Object>} Deletion result
  * 
@@ -445,13 +503,14 @@ export async function deleteResource(userId, product, endpoint) {
  * ✅ GET Helper - Simplified GET request
  * 
  * @param {number} userId - User ID
- * @param {string} product - Product (HCM or ERP)
+ * @param {string} product - Product (HCM, ERP, MHI, or CRM)
  * @param {string} endpoint - API endpoint
  * @param {Object} [queryParams={}] - Query parameters
  * @returns {Promise<Object>} Retrieved resources
  * 
  * @example
  * const employees = await getResource(1, "HCM", "/emps", { limit: 50 });
+ * const orgs = await getResource(1, "CRM", "/hubOrganizations", { limit: 50 });
  */
 export async function getResource(userId, product, endpoint, queryParams = {}) {
   return await callOracleAPI({

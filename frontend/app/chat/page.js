@@ -395,18 +395,20 @@ const Message = ({ message, index, onCopy, onRetry, onShare, onExport, onReadAlo
         setShowMoreMenu(false)
       }}
     >
-      {message.role === 'assistant' && (
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-          className="w-10 h-10 rounded-full bg-[#03045E] flex items-center justify-center flex-shrink-0 shadow-md"
-        >
-          <span className="text-white font-semibold text-[11px] tracking-wide">
-            DT
-          </span>
-        </motion.div>
-      )}
+     {message.role === 'assistant' && (
+  <motion.div
+    initial={{ scale: 0 }}
+    animate={{ scale: 1 }}
+    transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+    className="w-10 h-10 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-md overflow-hidden border border-[#E5E7EB]"
+  >
+    <img 
+      src="/assets/dt.png" 
+      alt="DT" 
+      className="w-8 h-8 object-contain"
+    />
+  </motion.div>
+)}
 
       <div className="max-w-[75%] relative">
         <motion.div 
@@ -627,7 +629,8 @@ export default function Page() {
   const [uploadedFileData, setUploadedFileData] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [hoveredConversation, setHoveredConversation] = useState(null)
-  
+  const [showDTMenu, setShowDTMenu] = useState(false)
+  const dtMenuRef = useRef(null)
   // ✅ NEW TABLE STATES
   const [tableData, setTableData] = useState([])
   const [showTable, setShowTable] = useState(false)
@@ -1054,12 +1057,15 @@ export default function Page() {
     }
   }, [mounted])
 
-  useEffect(() => {
+ useEffect(() => {
     if (!mounted) return
 
     const handleClickOutside = (event) => {
       if (accountMenuRef.current && !accountMenuRef.current.contains(event.target)) {
         setShowAccountMenu(false)
+      }
+      if (dtMenuRef.current && !dtMenuRef.current.contains(event.target)) {
+        setShowDTMenu(false)
       }
     }
 
@@ -1641,53 +1647,19 @@ export default function Page() {
             <div>
             <div className="flex items-center gap-3">
   
-  {/* ✅ Logo */}
-  <svg
-    width="110"
-    height="40"
-    viewBox="0 0 400 150"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M45,70 Q45,45 70,45 Q75,25 100,25 Q130,25 135,50 Q160,50 160,75 Q160,100 135,100 L65,100 Q45,100 45,70 Z"
-      fill="none"
-      stroke="#2563EB"
-      strokeWidth="6"
+  <div>
+  <div className="flex items-center gap-3">
+    {/* ✅ PNG Logo */}
+    <img
+      src="/assets/logo.png"
+      alt="DigiTrans Technology Logo"
+      width={110}
+      height={40}
+      className="object-contain"
     />
+  </div>
+</div>
 
-    <circle cx="75" cy="85" r="4" fill="#2563EB" />
-    <line x1="75" y1="85" x2="75" y2="60" stroke="#2563EB" strokeWidth="4" />
-    <circle cx="75" cy="56" r="4" fill="#2563EB" />
-
-    <circle cx="130" cy="85" r="4" fill="#2563EB" />
-    <line x1="130" y1="85" x2="130" y2="60" stroke="#2563EB" strokeWidth="4" />
-    <circle cx="130" cy="56" r="4" fill="#2563EB" />
-
-    <path d="M115,55 L90,85 L105,85 L95,115 L125,75 L110,75 Z" fill="#2563EB" />
-
-    <text
-      x="175"
-      y="90"
-      fontFamily="Arial, Helvetica, sans-serif"
-      fontWeight="bold"
-      fontSize="52"
-    >
-      <tspan fill="#2563EB">Digi</tspan>
-      <tspan fill="#10B981">Trans</tspan>
-    </text>
-
-    <text
-      x="210"
-      y="115"
-      fontFamily="Arial, Helvetica, sans-serif"
-      fontWeight="bold"
-      fontSize="14"
-      fill="#1E40AF"
-      letterSpacing="4"
-    >
-      TECHNOLOGY
-    </text>
-  </svg>
 
   {/* ✅ Connected Status (After Logo) */}
   <div className="flex items-center gap-2">
@@ -1702,92 +1674,153 @@ export default function Page() {
     </span>
   </div>
 </div>
-            </div>
-            </div>
+</div>
+</div>
+
           {user && (
-            <div className="relative z-[100]" ref={accountMenuRef}>
-              <button
-                onClick={() => setShowAccountMenu(!showAccountMenu)}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] hover:bg-white transition-all"
-              >
-                <div className="w-9 h-9 rounded-full bg-[#03045E] flex items-center justify-center text-white font-bold text-sm shadow-sm">
-                  {initials}
-                </div>
-                <svg className="w-4 h-4 text-[#475569]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+            <div className="flex items-center gap-3">
+           
 
-              {showAccountMenu && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-[#E5E7EB] py-2 z-[9999]"
+<div className="relative z-[100]" ref={dtMenuRef}>
+  <button
+    onClick={() => setShowDTMenu(!showDTMenu)}
+    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] hover:bg-white transition-all"
+  >
+    <div className="w-9 h-9 rounded-full bg-[#03045E] flex items-center justify-center text-white font-bold text-sm shadow-sm">
+      DT
+    </div>
+    <svg className="w-4 h-4 text-[#475569]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  </button>
+
+  {showDTMenu && (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95, y: -10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-[#E5E7EB] py-2 z-[9999]"
+    >
+      <div className="px-4 py-2 border-b border-[#E5E7EB]">
+        <p className="text-xs font-bold text-[#6B7280] uppercase tracking-wider">DT Management</p>
+      </div>
+
+      {/* Invoice Management */}
+      <button
+        onClick={() => { router.push('/invoice-management'); setShowDTMenu(false) }}
+        className="w-full px-4 py-3 text-left text-sm text-[#475569] hover:text-[#03045E] hover:bg-[#F9FAFB] flex items-center gap-3 transition-all"
+      >
+        <svg className="w-5 h-5 text-[#03045E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <div>
+          <div className="font-semibold">Invoice Management</div>
+          <div className="text-xs text-[#6B7280]">Manage and track invoices</div>
+        </div>
+      </button>
+
+      {/* Supplier Log */}
+      <button
+        onClick={() => { router.push('/supplier-management'); setShowDTMenu(false) }}
+        className="w-full px-4 py-3 text-left text-sm text-[#475569] hover:text-[#03045E] hover:bg-[#F9FAFB] flex items-center gap-3 transition-all"
+      >
+        <svg className="w-5 h-5 text-[#03045E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+        <div>
+          <div className="font-semibold">Supplier Log</div>
+          <div className="text-xs text-[#6B7280]">Manage suppliers &amp; contacts</div>
+        </div>
+      </button>
+    </motion.div>
+  )}
+</div>
+     {/* Profile Button */}
+              <div className="relative z-[100]" ref={accountMenuRef}>
+                <button
+                  onClick={() => setShowAccountMenu(!showAccountMenu)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] hover:bg-white transition-all"
                 >
-                  <div className="px-4 py-3 border-b border-[#E5E7EB]">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-[#03045E] flex items-center justify-center text-white font-bold shadow-sm">
-                        {initials}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bold text-[#0B132B] truncate">
-                          {user.firstName}
-                        </div>
-                        <div className="text-sm text-[#475569] truncate">
-                          {user.email}
-                        </div>
-                      </div>
-                    </div>
+                  <div className="w-9 h-9 rounded-full bg-[#03045E] flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                    {initials}
                   </div>
+                  <svg className="w-4 h-4 text-[#475569]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
 
-                  <button
-                    onClick={() => {
-                      setShowAccountMenu(false);
-                      toast.success('Profile update coming soon!')
-                    }}
-                    className="w-full px-4 py-3 text-left text-sm text-[#475569] hover:text-[#03045E] hover:bg-[#F9FAFB] flex items-center gap-3 transition-all"
+                {showAccountMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-[#E5E7EB] py-2 z-[9999]"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    <div>
-                      <div className="font-semibold">Profile</div>
-                      <div className="text-xs text-[#6B7280]">Update your information</div>
+                    <div className="px-4 py-3 border-b border-[#E5E7EB]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-[#03045E] flex items-center justify-center text-white font-bold shadow-sm">
+                          {initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-[#0B132B] truncate">
+                            {user.firstName}
+                          </div>
+                          <div className="text-sm text-[#475569] truncate">
+                            {user.email}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </button>
 
-                  <button
-                    onClick={() => {
-                      setShowAccountMenu(false);
-                      router.push('/integrations')
-                    }}
-                    className="w-full px-4 py-3 text-left text-sm text-[#475569] hover:text-[#03045E] hover:bg-[#F9FAFB] flex items-center gap-3 transition-all"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
-                    </svg>
-                    <div>
-                      <div className="font-semibold">Integrations</div>
-                      <div className="text-xs text-[#6B7280]">Manage Oracle Fusion connections</div>
-                    </div>
-                  </button>
+                    <button
+                      onClick={() => {
+                        setShowAccountMenu(false);
+                        toast.success('Profile update coming soon!')
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-[#475569] hover:text-[#03045E] hover:bg-[#F9FAFB] flex items-center gap-3 transition-all"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <div>
+                        <div className="font-semibold">Profile</div>
+                        <div className="text-xs text-[#6B7280]">Update your information</div>
+                      </div>
+                    </button>
 
-                  <button
-                    onClick={handleLogout}
-                    className="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-all"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    <div>
-                      <div className="font-semibold">Logout</div>
-                      <div className="text-xs text-[#6B7280]">Sign out of your account</div>
-                    </div>
-                  </button>
-                </motion.div>
-              )}
+                    <button
+                      onClick={() => {
+                        setShowAccountMenu(false);
+                        router.push('/integrations')
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-[#475569] hover:text-[#03045E] hover:bg-[#F9FAFB] flex items-center gap-3 transition-all"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+                      </svg>
+                      <div>
+                        <div className="font-semibold">Integrations</div>
+                        <div className="text-xs text-[#6B7280]">Manage Oracle Fusion connections</div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={handleLogout}
+                      className="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-all"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      <div>
+                        <div className="font-semibold">Logout</div>
+                        <div className="text-xs text-[#6B7280]">Sign out of your account</div>
+                      </div>
+                    </button>
+                  </motion.div>
+                )}
+              </div>
+
             </div>
           )}
         </div>
@@ -1806,16 +1839,16 @@ export default function Page() {
                 transition={{ duration: 0.5 }}
                 className="h-full flex flex-col items-center justify-center text-center max-w-3xl mx-auto"
               >
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                  className="w-20 h-13 aspect-square rounded-full bg-[#03045E] flex items-center justify-center shadow-lg mt-5"
-                >
-                  <span className="text-white font-semibold text-lg tracking-wide leading-none">
-                    DT
-                  </span>
-                </motion.div>
+               <motion.div
+  initial={{ scale: 0.8, opacity: 0 }}
+  animate={{ scale: 1, opacity: 1 }}
+  transition={{ duration: 0.4, ease: "easeOut" }}
+  className="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center shadow-md"
+>
+  <img src="/assets/dt.png" className="w-14 h-14" />
+</motion.div>
+
+
 
                 <motion.h2 
                   initial={{ opacity: 0 }}
@@ -2147,45 +2180,77 @@ export default function Page() {
                 )}
 
                 {isTyping && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                    className="flex gap-4"
-                  >
-                    <motion.div 
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-                      className="w-10 h-10 rounded-full bg-[#03045E] flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0 shadow-md"
-                    >
-                      Oracle
-                    </motion.div>
-                    <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl px-5 py-4 shadow-sm">
-                      <div className="flex gap-1.5">
-                        <motion.div 
-                          animate={{ y: [0, -8, 0] }}
-                          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
-                          className="w-2.5 h-2.5 bg-[#03045E] rounded-full"
-                        />
-                        <motion.div 
-                          animate={{ y: [0, -8, 0] }}
-                          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
-                          className="w-2.5 h-2.5 bg-[#03045E] rounded-full"
-                        />
-                        <motion.div 
-                          animate={{ y: [0, -8, 0] }}
-                          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
-                          className="w-2.5 h-2.5 bg-[#03045E] rounded-full"
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
+  <motion.div
+    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    transition={{ type: "spring", stiffness: 200, damping: 20 }}
+    className="flex gap-4"
+  >
+    {/* Logo Avatar */}
+    <motion.div 
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+      className="w-10 h-10 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-md overflow-hidden border border-[#E5E7EB]"
+    >
+      <img src="/assets/dt.png" alt="DT" className="w-8 h-8 object-contain" />
+    </motion.div>
+
+    {/* Typing Bubble */}
+    <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl px-5 py-4 shadow-sm flex items-center gap-3">
+      
+      {/* Thunder Lightning Animation */}
+      <motion.div
+        animate={{ 
+          scale: [1, 1.3, 1],
+          opacity: [0.7, 1, 0.7],
+          rotate: [0, 5, -5, 0]
+        }}
+        transition={{ 
+          duration: 0.8, 
+          repeat: Infinity, 
+          ease: "easeInOut" 
+        }}
+        className="text-[#03045E]"
+      >
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M13 0L0 13h9l-2 11 13-13h-9z"/>
+        </svg>
+      </motion.div>
+
+      {/* Bouncing Dots */}
+      <div className="flex gap-1.5">
+        <motion.div 
+          animate={{ y: [0, -8, 0] }}
+          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
+          className="w-2.5 h-2.5 bg-[#03045E] rounded-full"
+        />
+        <motion.div 
+          animate={{ y: [0, -8, 0] }}
+          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+          className="w-2.5 h-2.5 bg-[#03045E] rounded-full"
+        />
+        <motion.div 
+          animate={{ y: [0, -8, 0] }}
+          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+          className="w-2.5 h-2.5 bg-[#03045E] rounded-full"
+        />
+      </div>
+
+      {/* Thinking Text */}
+      <motion.span
+        animate={{ opacity: [0.4, 1, 0.4] }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+        className="text-xs text-[#6B7280] font-medium"
+      >
+        Thinking...
+      </motion.span>
+    </div>
+  </motion.div>
+)}
               </div>
             )}
           </div>
-
           {/* ✅ CRITICAL: SCROLL ANCHOR AT THE VERY END */}
           <div ref={messagesEndRef} className="h-1" />
         </div>

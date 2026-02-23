@@ -141,7 +141,7 @@ async function computeAttritionAnalytics({ userId, query }) {
     };
   }
 
-  console.log(`   📊 Total employees fetched: ${employees.length}`);
+  console.log(`    Total employees fetched: ${employees.length}`);
 
   // ✅ Step 2: Filter terminated employees (those with TerminationDate)
   const terminated = employees.filter(e => e.TerminationDate);
