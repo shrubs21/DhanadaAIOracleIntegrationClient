@@ -2,10 +2,6 @@ import express from "express";
 import pool from "../../src/config/db.js";
 
 const router = express.Router();
-
-/**
- * GET ALL SUPPLIERS
- */
 router.get("/", async (req, res) => {
   try {
     const result = await pool.query(
@@ -14,11 +10,12 @@ router.get("/", async (req, res) => {
         supplier_id,
         supplier_name,
         supplier_number,
-        tax_id,
+        tax_registration_number,
         email,
         phone,
         country,
-        business_unit,
+        procurement_bu_name,
+        procurement_bu_id,
         supplier_site_id,
         status,
         created_at
@@ -42,3 +39,4 @@ router.get("/", async (req, res) => {
 });
 
 export default router;
+

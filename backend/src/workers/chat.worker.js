@@ -9,7 +9,8 @@ import { SYSTEM_PROMPT } from "../llm/system-prompt.js";
 const MCP_URL = process.env.MCP_URL || "http://mcp-server:5001/mcp";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const N8N_INVOICE_WEBHOOK = process.env.N8N_INVOICE_WEBHOOK || "http://n8n:5678/webhook/invoice-agent";
-
+const N8N_SUPPLIER_WEBHOOK = process.env.N8N_SUPPLIER_WEBHOOK || "http://n8n:5678/webhook/supplier-agent";
+const N8N_CUSTOMER_WEBHOOK =process.env.N8N_CUSTOMER_WEBHOOK || "http://n8n:5678/webhook/customer-agent";
 /* -------------------------------------------------
    REDIS (WORKER CONNECTION)
 -------------------------------------------------- */
@@ -279,6 +280,46 @@ function isInvoiceIntent(text) {
 }
 
 /* -------------------------------------------------
+   SUPPLIER INTENT DETECTION
+-------------------------------------------------- */
+function isSupplierIntent(text) {
+  const t = text.toLowerCase();
+
+  const keywords = [
+    "supplier",
+    "vendor",
+    "new supplier",
+    "add supplier",
+    "create supplier",
+    "supplier status",
+    "track supplier",
+    "supplier invoice",
+    "supplier payment",
+    "approve supplier",
+    "supplier registration",
+    "supplier onboarding"
+  ];
+
+  return keywords.some(k => t.includes(k));
+}
+
+function isCustomerIntent(text) {
+  const t = text.toLowerCase();
+
+  const keywords = [
+    "customer",
+    "new customer",
+    "create customer",
+    "add customer",
+    "customer registration",
+    "customer onboarding",
+    "customer status",
+    "track customer"
+  ];
+
+  return keywords.some(k => t.includes(k));
+}
+/* -------------------------------------------------
    STREAM HELPER
 -------------------------------------------------- */
 async function streamResponse(conversationId, text) {
@@ -323,7 +364,7 @@ async function storeMessages(conversationId, userPrompt, assistantReply, fileInf
    PROCESS SINGLE CHAT JOB
 -------------------------------------------------- */
 async function processChatJob(job) {
-  const { conversationId, userId, prompt } = job;
+  const { conversationId, chatNumber, userId, prompt } = job;
 
   // SAFETY GUARD - must be FIRST before any Redis calls
   if (!conversationId) {
@@ -365,7 +406,11 @@ async function processChatJob(job) {
       const response = await fetch(N8N_INVOICE_WEBHOOK, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId, userId, message: prompt })
+        body: JSON.stringify({
+  sessionId: conversationId,
+  userId,
+  message: prompt
+})
       });
 
       const data = await response.json();
@@ -374,7 +419,7 @@ async function processChatJob(job) {
       await storeMessages(conversationId, prompt, agentReply);
       await streamResponse(conversationId, agentReply);
     } catch (n8nError) {
-      console.error("❌ n8n fetch error (session active):", n8nError.message);
+      console.error("❌ n8n fetch error (invoice session active):", n8nError.message);
       const errReply = "⚠️ Invoice agent is unavailable right now. Please try again.";
 
       await storeMessages(conversationId, prompt, errReply);
@@ -397,7 +442,11 @@ async function processChatJob(job) {
       const response = await fetch(N8N_INVOICE_WEBHOOK, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId, userId, message: prompt })
+        body: JSON.stringify({
+  sessionId: conversationId,
+  userId,
+  message: prompt
+})
       });
 
       const data = await response.json();
@@ -407,7 +456,7 @@ async function processChatJob(job) {
       await storeMessages(conversationId, prompt, firstMessage);
       await streamResponse(conversationId, firstMessage);
     } catch (n8nError) {
-      console.error("❌ n8n fetch error (first trigger):", n8nError.message);
+      console.error("❌ n8n fetch error (invoice first trigger):", n8nError.message);
       // Clear the lock if n8n is unreachable
       await redis.del(invoiceSessionKey);
       const errReply = "⚠️ Invoice agent could not be reached. Please try again.";
@@ -421,6 +470,205 @@ async function processChatJob(job) {
   /* -------------------------------------------------
      END INVOICE → N8N ROUTING
   -------------------------------------------------- */
+
+  /* -------------------------------------------------
+     SUPPLIER → N8N SESSION LOCK
+     NOTE: No expiry - session is permanent until user
+     explicitly types "exit supplier"
+  -------------------------------------------------- */
+  const supplierSessionKey = `supplier:session:${conversationId}`;
+  const isSupplierSessionActive = await redis.get(supplierSessionKey);
+
+  // ─── EXIT SUPPLIER SESSION ───────────────────────────
+  if (prompt.toLowerCase() === "exit supplier") {
+    console.log("🚪 Exit supplier command received");
+    await redis.del(supplierSessionKey);
+
+    const exitReply = "Supplier session closed. You can continue normal chat.";
+
+    await storeMessages(conversationId, prompt, exitReply);
+    await streamResponse(conversationId, exitReply);
+    return;
+  }
+
+  // ─── SUPPLIER SESSION ACTIVE → ROUTE TO N8N ──────────
+  if (isSupplierSessionActive === "active") {
+    console.log("🔒 Supplier session active → routing to n8n");
+
+    try {
+      const response = await fetch(N8N_SUPPLIER_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+  sessionId: conversationId,
+  userId,
+  message: prompt
+})
+      });
+
+      const data = await response.json();
+      const agentReply = data.response || data.message || "Supplier agent response received.";
+
+      await storeMessages(conversationId, prompt, agentReply);
+      await streamResponse(conversationId, agentReply);
+    } catch (n8nError) {
+      console.error("❌ n8n fetch error (supplier session active):", n8nError.message);
+      const errReply = "⚠️ Supplier agent is unavailable right now. Please try again.";
+
+      await storeMessages(conversationId, prompt, errReply);
+      await streamResponse(conversationId, errReply);
+    }
+
+    return;
+  }
+
+  // ─── FIRST TIME SUPPLIER DETECTION ───────────────────
+  if (isSupplierIntent(prompt)) {
+    console.log("🏭 Supplier intent detected → starting n8n agent session");
+    console.log("   Supplier session key:", supplierSessionKey);
+
+    // ✅ NO EXPIRY - session is permanent until "exit supplier"
+    await redis.set(supplierSessionKey, "active");
+    console.log("   ✅ Redis session lock set (NO EXPIRY - permanent until exit)");
+
+    try {
+      const response = await fetch(N8N_SUPPLIER_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId, userId, message: prompt })
+      });
+
+      const data = await response.json();
+      const agentReply = data.response || data.message || "Supplier agent started.";
+      const firstMessage = `🏭 Supplier assistant activated.\n\n${agentReply}\n\n⚠️ Don't worry 😊 If your question is unrelated, start a new chat.\n\nType **"exit supplier"** to end the supplier session.`;
+
+      await storeMessages(conversationId, prompt, firstMessage);
+      await streamResponse(conversationId, firstMessage);
+    } catch (n8nError) {
+      console.error("❌ n8n fetch error (supplier first trigger):", n8nError.message);
+      // Clear the lock if n8n is unreachable
+      await redis.del(supplierSessionKey);
+      const errReply = "⚠️ Supplier agent could not be reached. Please try again.";
+
+      await storeMessages(conversationId, prompt, errReply);
+      await streamResponse(conversationId, errReply);
+    }
+
+    return;
+  }
+  /* -------------------------------------------------
+     END SUPPLIER → N8N ROUTING
+  -------------------------------------------------- */
+/* -------------------------------------------------
+   CUSTOMER → N8N SESSION LOCK
+   NOTE: No expiry - session is permanent until user
+   explicitly types "exit customer"
+-------------------------------------------------- */
+/* -------------------------------------------------
+   CUSTOMER → N8N SESSION LOCK
+   NOTE: No expiry - session is permanent until user
+   explicitly types "exit customer"
+-------------------------------------------------- */
+
+const customerSessionKey = `customer:session:${conversationId}`;
+const isCustomerSessionActive = await redis.get(customerSessionKey);
+
+// ─── EXIT CUSTOMER SESSION ───────────────────────────
+if (prompt.toLowerCase() === "exit customer") {
+  console.log("🚪 Exit customer command received");
+  await redis.del(customerSessionKey);
+
+  const exitReply = "Customer session closed. You can continue normal chat.";
+
+  await storeMessages(conversationId, prompt, exitReply);
+  await streamResponse(conversationId, exitReply);
+  return;
+}
+
+// ─── CUSTOMER SESSION ACTIVE → ROUTE TO N8N ──────────
+if (isCustomerSessionActive === "active") {
+  console.log("🔒 Customer session active → routing to n8n");
+
+  try {
+    const response = await fetch(N8N_CUSTOMER_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: conversationId,
+        userId,
+        message: prompt
+      })
+    });
+
+    const data = await response.json();
+    const agentReply =
+      data.response || data.message || "Customer agent response received.";
+
+    await storeMessages(conversationId, prompt, agentReply);
+    await streamResponse(conversationId, agentReply);
+
+  } catch (n8nError) {
+    console.error("❌ n8n fetch error (customer session active):", n8nError.message);
+    const errReply =
+      "⚠️ Customer agent is unavailable right now. Please try again.";
+
+    await storeMessages(conversationId, prompt, errReply);
+    await streamResponse(conversationId, errReply);
+  }
+
+  return;
+}
+
+// ─── FIRST TIME CUSTOMER DETECTION ───────────────────
+if (isCustomerIntent(prompt)) {
+  console.log("👤 Customer intent detected → starting n8n agent session");
+  console.log("   Customer session key:", customerSessionKey);
+
+  await redis.set(customerSessionKey, "active");
+  console.log("   ✅ Redis customer session lock set");
+
+  try {
+    const response = await fetch(N8N_CUSTOMER_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: conversationId,
+        userId,
+        message: prompt
+      })
+    });
+
+    const data = await response.json();
+    const agentReply =
+      data.response || data.message || "Customer agent started.";
+
+    const firstMessage = `👤 Customer assistant activated.
+
+${agentReply}
+
+⚠️ If your question is unrelated, start a new chat.
+
+Type **"exit customer"** to end the customer session.`;
+
+    await storeMessages(conversationId, prompt, firstMessage);
+    await streamResponse(conversationId, firstMessage);
+
+  } catch (n8nError) {
+    console.error("❌ n8n fetch error (customer first trigger):", n8nError.message);
+
+    await redis.del(customerSessionKey);
+
+    const errReply =
+      "⚠️ Customer agent could not be reached. Please try again.";
+
+    await storeMessages(conversationId, prompt, errReply);
+    await streamResponse(conversationId, errReply);
+  }
+
+  return;
+}
+
+
 
   /* 1. LOAD CONVERSATION HISTORY */
   const history = await pool.query(
@@ -442,6 +690,7 @@ async function processChatJob(job) {
   ];
 
   console.log(`Context: ${messages.length} messages (including system prompt)`);
+
 
   /* LOAD PREVIOUS INTENT */
   let effectivePrompt = prompt;
@@ -950,6 +1199,7 @@ async function startWorker() {
   console.log("   ✅ Oracle HCM queries (employees, payroll, leave, performance)");
   console.log("   ✅ Oracle ERP queries (suppliers, invoices, POs, payments)");
   console.log("   ✅ 🧾 INVOICE → N8N AGENT (session-locked routing)");
+  console.log("   ✅ 🏭 SUPPLIER → N8N AGENT (session-locked routing)");
   console.log("   ✅ General tech questions & code examples");
   console.log("   ✅ Smart query limits (10, 20, 50, 100, all)");
   console.log("   ✅ PDF/ZIP download support");
@@ -961,6 +1211,13 @@ async function startWorker() {
   console.log("   ✅ Type 'exit invoice' to end session");
   console.log("   ✅ No LLM invoice logic - n8n owns the flow");
   console.log("   ✅ All invoice messages stored in DB (user + assistant)");
+  console.log("\n🔒 SUPPLIER SESSION LOCK:");
+  console.log("   ✅ Supplier/vendor intent → triggers n8n webhook");
+  console.log("   ✅ Session is PERMANENT (no expiry) until user exits");
+  console.log("   ✅ ALL messages in session → routed to n8n");
+  console.log("   ✅ Type 'exit supplier' to end session");
+  console.log("   ✅ No LLM supplier logic - n8n owns the flow");
+  console.log("   ✅ All supplier messages stored in DB (user + assistant)");
   console.log("\n🛡️ TOKEN FIREWALL:");
   console.log("   ✅ LLM sees max 5 records ALWAYS");
   console.log("   ✅ Full dataset stored in Redis only if >30 records");

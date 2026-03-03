@@ -14,7 +14,7 @@ import jwt from "jsonwebtoken"
 export async function sendMessage(req, res) {
   try {
     const userId = req.user.id
-    const { message, conversationId, fileData } = req.body
+    const { message, conversationId, chatNumber,fileData } = req.body
 
     if (!message || !message.trim()) {
       return res.status(400).json({ error: "Message cannot be empty" })
@@ -44,6 +44,7 @@ export async function sendMessage(req, res) {
     // ✅ Push ONLY raw user input to Redis
     await enqueueChatMessage({
       conversationId: convId,
+      chatNumber: chatNumber,
       userId,
       prompt: message,
       fileData: fileData || null

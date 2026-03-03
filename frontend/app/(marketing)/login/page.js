@@ -160,29 +160,31 @@ export default function LoginPage(){
             </div>
 
             {/* Submit Button */}
-            <div className="pt-1">
-              <motion.button 
-                whileHover={{ scale: isLoading ? 1 : 1.02 }}
-                whileTap={{ scale: isLoading ? 1 : 0.98 }}
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-3.5 rounded-xl font-semibold text-white bg-[#03045E] hover:opacity-90 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group"
-              >
-                <span className="flex items-center justify-center gap-2">
-                  {isLoading ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Signing in...
-                    </>
-                  ) : (
-                    <>
-                      Sign In
-                      <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
-                    </>
-                  )}
-                </span>
-              </motion.button>
-            </div>
+            {/* Submit Button */}
+<div className="pt-1">
+  <motion.button 
+    whileHover={{ scale: isLoading ? 1 : 1.02 }}
+    whileTap={{ scale: isLoading ? 1 : 0.98 }}
+    type="submit"
+    disabled={isLoading}
+    className="w-full py-3.5 rounded-xl font-semibold text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group"
+    style={{ background: '#00C853' }}
+  >
+    <span className="flex items-center justify-center gap-2">
+      {isLoading ? (
+        <>
+          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          Signing in...
+        </>
+      ) : (
+        <>
+          Sign In
+          <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
+        </>
+      )}
+    </span>
+  </motion.button>
+</div>
           </form>
 
           {/* Divider */}

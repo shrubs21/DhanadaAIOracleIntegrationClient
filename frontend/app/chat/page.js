@@ -410,16 +410,16 @@ const Message = ({ message, index, onCopy, onRetry, onShare, onExport, onReadAlo
   </motion.div>
 )}
 
-      <div className="max-w-[75%] relative">
+      <div className={`relative ${message.role === 'assistant' ? 'w-full' : 'max-w-[75%]'}`}>
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className={`rounded-2xl px-5 py-4 shadow-sm ${
-            message.role === 'assistant'
-              ? 'bg-[#F9FAFB] border border-[#E5E7EB]'
-              : 'bg-white border border-[#E5E7EB] text-[#0B132B]'
-          }`}
+         className={`px-6 py-6 ${
+  message.role === 'assistant'
+    ? 'bg-transparent'
+    : 'bg-white border border-[#E5E7EB] rounded-2xl text-[#0B132B]'
+}`}
         >
           {/* 🔥 FIX: RENDER DOWNLOAD UI USING message.fileUrl */}
           {message.fileUrl && (
@@ -470,118 +470,80 @@ const Message = ({ message, index, onCopy, onRetry, onShare, onExport, onReadAlo
             </motion.div>
           )}
 
-          <div className="text-[15px] leading-relaxed text-[#0B132B]">
+          <div className="text-[16px] leading-8 text-[#0B132B] max-w-3xl">
             {renderContent(message.text)}
           </div>
         </motion.div>
 
-        {/* ✅ SIDE ACTION BUTTONS - COPY + EXPORT (visible on hover) */}
+        {/* ✅ GEMINI-STYLE BOTTOM ACTION BUTTONS */}
         <AnimatePresence>
           {showActions && message.role === 'assistant' && (
-            <motion.div 
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 5 }}
               transition={{ duration: 0.15 }}
-              className="absolute top-2 -right-28 flex flex-col gap-2"
+              className="flex items-center gap-1 mt-1 px-2"
             >
-              {/* Copy Button */}
               <button
                 onClick={() => onCopy(message.text)}
-                className="p-2.5 hover:bg-white rounded-lg transition-all border border-[#E5E7EB] bg-[#F9FAFB] shadow-sm group"
-                title="Copy"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-[#475569] hover:text-[#03045E] hover:bg-[#F1F5F9] transition-all"
               >
-                <svg className="w-4 h-4 text-[#475569] group-hover:text-[#03045E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
+                Copy
               </button>
 
-              {/* Export Button (PDF/Excel) */}
               <button
                 onClick={() => onExport(message.text, exportType)}
-                className="p-2.5 hover:bg-white rounded-lg transition-all border border-[#E5E7EB] bg-[#F9FAFB] shadow-sm group"
-                title={`Export as ${exportType === 'excel' ? 'Excel' : 'PDF'}`}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-[#475569] hover:text-[#03045E] hover:bg-[#F1F5F9] transition-all"
               >
                 {exportType === 'excel' ? (
-                  <svg className="w-4 h-4 text-green-600 group-hover:text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
                 ) : (
-                  <svg className="w-4 h-4 text-red-600 group-hover:text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
                 )}
+                {exportType === 'excel' ? 'Excel' : 'PDF'}
               </button>
 
-              {/* 3-Dot More Menu */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowMoreMenu(!showMoreMenu)}
-                  className="p-2.5 hover:bg-white rounded-lg transition-all border border-[#E5E7EB] bg-[#F9FAFB] shadow-sm group"
-                  title="More options"
-                >
-                  <svg className="w-4 h-4 text-[#475569] group-hover:text-[#03045E]" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                  </svg>
-                </button>
+              <button
+                onClick={() => onShare(message.text)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-[#475569] hover:text-[#03045E] hover:bg-[#F1F5F9] transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Share
+              </button>
 
-                {/* Dropdown Menu */}
-                <AnimatePresence>
-                  {showMoreMenu && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: -5 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: -5 }}
-                      transition={{ duration: 0.1 }}
-                      className="absolute right-0 top-full mt-1 w-40 bg-white rounded-xl shadow-xl border border-[#E5E7EB] py-1 z-50"
-                    >
-                      <button
-                        onClick={() => {
-                          onReadAloud(message.text)
-                          setShowMoreMenu(false)
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-sm text-[#475569] hover:text-[#03045E] hover:bg-[#F9FAFB] flex items-center gap-3 transition-all"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                        </svg>
-                        Read Aloud
-                      </button>
+              <button
+                onClick={() => onReadAloud(message.text)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-[#475569] hover:text-[#03045E] hover:bg-[#F1F5F9] transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+                Read
+              </button>
 
-                      <button
-                        onClick={() => {
-                          onShare(message.text)
-                          setShowMoreMenu(false)
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-sm text-[#475569] hover:text-[#03045E] hover:bg-[#F9FAFB] flex items-center gap-3 transition-all"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                        </svg>
-                        Share
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          onRetry(index)
-                          setShowMoreMenu(false)
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-sm text-[#475569] hover:text-[#03045E] hover:bg-[#F9FAFB] flex items-center gap-3 transition-all"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Retry
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              <button
+                onClick={() => onRetry(index)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-[#475569] hover:text-[#03045E] hover:bg-[#F1F5F9] transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Retry
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-
       {message.role === 'user' && (
         <motion.div 
           initial={{ scale: 0 }}
@@ -605,7 +567,7 @@ export default function Page() {
       router.replace("/login")
     }
   }, [router])
-
+  const [chatNumber, setChatNumber] = useState(null)
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [messages, setMessages] = useState([])
@@ -988,10 +950,21 @@ export default function Page() {
         router.replace("/login")
       })
   }, [router])
+useEffect(() => {
+  setMounted(true)
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  // ✅ Restore chatNumber if exists
+  const storedChatNumber = localStorage.getItem("chatNumber")
+  if (storedChatNumber) {
+    setChatNumber(storedChatNumber)
+  } else {
+    // If no chatNumber exists, generate one
+    const newChatNumber = "CHAT-" + Date.now()
+    setChatNumber(newChatNumber)
+    localStorage.setItem("chatNumber", newChatNumber)
+  }
+
+}, [])
 
   const scrollToBottom = useCallback((force = false) => {
     if (force || isAtBottom) {
@@ -1358,13 +1331,14 @@ export default function Page() {
       console.log("📨 Sending message to backend...")
 
       const res = await apiFetch(`${API_URL}/api/chat/send`, {
-        method: "POST",
-        body: JSON.stringify({
-          message: prompt,
-          conversationId: currentConversationId,
-          fileData: uploadedFileData
-        })
-      })
+  method: "POST",
+  body: JSON.stringify({
+    message: prompt,
+    conversationId: currentConversationId,   // 🔹 for DB
+    chatNumber: chatNumber,                 // 🔥 NEW - for agent
+    fileData: uploadedFileData
+  })
+})
 
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}: Failed to send message`)
@@ -1406,21 +1380,24 @@ export default function Page() {
     sendMessage(userMessage)
   }
 
-  const handleNewChat = () => {
-    setMessages([])
-    setCurrentConversationId(null)
-    localStorage.removeItem('currentConversationId')
-    setUploadedFileData(null)
-    setSelectedFile(null)
-    
-    // ✅ Reset table state
-    setTableData([])
-    setShowTable(false)
-    setPage(1)
-    setSearchTerm("")
-    
-    toast.success("New chat started")
-  }
+const handleNewChat = () => {
+  const newChatNumber = "CHAT-" + Date.now()
+  setChatNumber(newChatNumber)
+  localStorage.setItem("chatNumber", newChatNumber)
+
+  setMessages([])
+  setCurrentConversationId(null)
+  localStorage.removeItem('currentConversationId')
+  setUploadedFileData(null)
+  setSelectedFile(null)
+
+  setTableData([])
+  setShowTable(false)
+  setPage(1)
+  setSearchTerm("")
+
+  toast.success("New chat started")
+}
 
   const initials = user?.firstName
     ? user.firstName.charAt(0).toUpperCase()
@@ -1444,18 +1421,33 @@ export default function Page() {
         className={`${showSidebar ? 'flex' : 'hidden'} bg-[#F9FAFB] border-r border-[#E5E7EB] flex-col shadow-sm transition-all duration-300 ease-in-out relative`}
         style={{ width: showSidebar ? `${sidebarWidth}px` : '0' }}
       >
-        <div className="p-4 border-b border-[#E5E7EB]">
-          <button
-            onClick={handleNewChat}
-            className="w-full px-4 py-3 bg-[#03045E] text-white rounded-xl font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-sm"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Chat
-          </button>
-        </div>
+       <div className="p-4 border-b border-[#E5E7EB]">
+  <div className="flex gap-2">
+    {/* Help Button - BLUE */}
+    <button
+      onClick={() => toast.success('Help center coming soon!')}
+      className="flex-1 px-3 py-3 bg-[#03045E] hover:opacity-90 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-sm"
+      title="Help"
+    >
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      Help
+    </button>
 
+    {/* New Chat Button - GREEN */}
+    <button
+      onClick={handleNewChat}
+      className="flex-1 px-3 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-sm"
+      title="New Chat"
+    >
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+      </svg>
+      New Chat
+    </button>
+  </div>
+</div>
         <div className="p-4 border-b border-[#E5E7EB]">
           <div className="relative">
             <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#6B7280]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1871,57 +1863,34 @@ export default function Page() {
   initial={{ opacity: 0 }}
   animate={{ opacity: 1 }}
   transition={{ delay: 0.5 }}
-  className="grid grid-cols-4 gap-3 w-full max-w-6xl"
+  className="grid grid-cols-4  gap-4 w-full max-w-3xl"
 >
   {[
-    {
-      icon: '/assets/show-employee-attrition-trends.png',
-      text: 'Show employee attrition trends',
-      badge: 'HCM',
-      gradient: 'from-blue-500 to-indigo-600'
-    },{
-      icon: '/assets/invoice.png',
-      text: 'Create invoice',
-      badge: 'Finance',
-      gradient: 'from-teal-500 to-green-600'
-    },
-    {
-      icon: '/assets/supply-chain.png',
-      text: 'Analyze supplier performance',
-      badge: 'SCM',
-      gradient: 'from-purple-500 to-pink-600'
-    },
-    {
-      icon: '/assets/generate-financial-reports.png',
-      text: 'Generate financial reports',
-      badge: 'Finance',
-      gradient: 'from-green-500 to-emerald-600'
-    },
-    {
-      icon: '/assets/inventory-management.png',
-      text: 'Check inventory levels',
-      badge: 'Inventory',
-      gradient: 'from-orange-500 to-red-600'
-    },
-    {
-      icon: '/assets/show-employee-attrition-trends.png',
-      text: 'List employees on leave',
-      badge: 'HCM',
-      gradient: 'from-cyan-500 to-blue-300'
-    },
-    {
-      icon: '/assets/supply-chain.png',
-      text: 'Show all employees',
-      badge: 'HCM',
-      gradient: 'from-violet-500 to-purple-300'
-    },
-    
-    {
-      icon: '/assets/inventory-management.png',
-      text: 'Absence report',
-      badge: 'Reports',
-      gradient: 'from-amber-500 to-orange-600'
-    }
+  {
+    icon: '/assets/supply-chain.png',
+    text: 'Create supplier',
+    badge: '  Finance',
+    gradient: 'from-purple-500 to-pink-600'
+  },
+  {
+    icon: '/assets/invoice.png',
+    text: 'Create invoice',
+    badge: 'Finance',
+    gradient: 'from-teal-500 to-green-600'
+  },
+  {
+    icon: '/assets/supply-chain.png',   // reusing existing image
+    text: 'Create customer',
+    badge: 'Finance',
+    gradient: 'from-blue-500 to-indigo-600'
+  },
+  {
+    icon: '/assets/show-employee-attrition-trends.png',
+    text: 'Show all employees',
+    badge: 'HCM',
+    gradient: 'from-violet-500 to-purple-300'
+  }
+
   ].map((suggestion, i) => (
     <motion.button
       key={i}
@@ -2179,72 +2148,39 @@ export default function Page() {
                   </motion.div>
                 )}
 
-                {isTyping && (
+   
+   {/* Gemini Style Green + Dark Blue Ring */}
+{isTyping && (
   <motion.div
-    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-    animate={{ opacity: 1, y: 0, scale: 1 }}
-    transition={{ type: "spring", stiffness: 200, damping: 20 }}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.3 }}
     className="flex gap-4"
   >
-    {/* Logo Avatar */}
-    <motion.div 
-      initial={{ scale: 0 }}
-      animate={{ scale: 1 }}
-      transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-      className="w-10 h-10 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-md overflow-hidden border border-[#E5E7EB]"
-    >
-      <img src="/assets/dt.png" alt="DT" className="w-8 h-8 object-contain" />
-    </motion.div>
-
-    {/* Typing Bubble */}
-    <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl px-5 py-4 shadow-sm flex items-center gap-3">
+    <div className="relative w-12 h-12 flex items-center justify-center">
       
-      {/* Thunder Lightning Animation */}
+      {/* Rotating Gradient Ring */}
       <motion.div
-        animate={{ 
-          scale: [1, 1.3, 1],
-          opacity: [0.7, 1, 0.7],
-          rotate: [0, 5, -5, 0]
+        animate={{ rotate: 360 }}
+        transition={{
+          repeat: Infinity,
+          duration: 2,
+          ease: "linear"
         }}
-        transition={{ 
-          duration: 0.8, 
-          repeat: Infinity, 
-          ease: "easeInOut" 
+        className="absolute inset-0 rounded-full"
+        style={{
+          background: "conic-gradient(#34D399, #03045E, #34D399)"
         }}
-        className="text-[#03045E]"
-      >
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M13 0L0 13h9l-2 11 13-13h-9z"/>
-        </svg>
-      </motion.div>
+      />
 
-      {/* Bouncing Dots */}
-      <div className="flex gap-1.5">
-        <motion.div 
-          animate={{ y: [0, -8, 0] }}
-          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
-          className="w-2.5 h-2.5 bg-[#03045E] rounded-full"
-        />
-        <motion.div 
-          animate={{ y: [0, -8, 0] }}
-          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
-          className="w-2.5 h-2.5 bg-[#03045E] rounded-full"
-        />
-        <motion.div 
-          animate={{ y: [0, -8, 0] }}
-          transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
-          className="w-2.5 h-2.5 bg-[#03045E] rounded-full"
+      {/* Inner White Circle (Creates Ring Effect) */}
+      <div className="absolute w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md border border-[#E5E7EB]">
+        <img
+          src="/assets/dt.png"
+          alt="DT"
+          className="w-7 h-7 object-contain"
         />
       </div>
-
-      {/* Thinking Text */}
-      <motion.span
-        animate={{ opacity: [0.4, 1, 0.4] }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-        className="text-xs text-[#6B7280] font-medium"
-      >
-        Thinking...
-      </motion.span>
     </div>
   </motion.div>
 )}
@@ -2272,7 +2208,6 @@ export default function Page() {
             </motion.button>
           )}
         </AnimatePresence>
-
         {/* Input Area */}
         <div className="bg-white border-t border-[#E5E7EB] px-6 py-4 shadow-sm sticky bottom-0 z-50">
           {showFileUpload && (

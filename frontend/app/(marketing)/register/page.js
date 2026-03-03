@@ -328,14 +328,15 @@ export default function RegisterPage() {
               </label>
             </div>
 
-            {/* SUBMIT BUTTON */}
+            {/* ── SUBMIT BUTTON — green ── */}
             <div className="pt-1">
               <motion.button 
                 whileHover={{ scale: isLoading ? 1 : 1.02 }}
                 whileTap={{ scale: isLoading ? 1 : 0.98 }}
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 rounded-xl font-semibold text-white bg-[#03045E] hover:opacity-90 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="w-full py-3.5 rounded-xl font-semibold text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group"
+                style={{ background: isLoading ? '#00b349' : '#00C853' }}
               >
                 <span className="flex items-center justify-center gap-2">
                   {isLoading ? (
@@ -354,6 +355,8 @@ export default function RegisterPage() {
             </div>
 
           </form>
+
+         
 
           {/* Divider */}
           <div className="flex items-center gap-4 my-6">

@@ -1,23 +1,30 @@
 export function validateSupplierInputService(data) {
   const errors = [];
 
-  if (!data.supplierName)
+  // Required for supplier creation
+  if (!data.supplierName || data.supplierName.trim() === "") {
     errors.push("Supplier name is required.");
+  }
 
-  if (!data.taxId)
-    errors.push("Tax ID is required.");
+  if (!data.address1 || data.address1.trim() === "") {
+    errors.push("Address line 1 is required.");
+  }
 
-  if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))
-    errors.push("Invalid email format.");
+  if (!data.city || data.city.trim() === "") {
+    errors.push("City is required.");
+  }
 
-  if (!data.phone || !/^\d+$/.test(data.phone))
-    errors.push("Phone must contain only digits.");
+  if (!data.country || !/^[A-Z]{2}$/.test(data.country)) {
+    errors.push("Country must be ISO 2-letter uppercase code (e.g., AE, US).");
+  }
 
-  if (!data.country || data.country.length !== 2)
-    errors.push("Country must be ISO 2-letter code.");
+  if (!data.taxRegistrationNumber || data.taxRegistrationNumber.trim() === "") {
+    errors.push("Tax Registration Number is required.");
+  }
 
-  if (!data.businessUnit)
-    errors.push("Business Unit is required.");
+  if (!data.procurementBUName || data.procurementBUName.trim() === "") {
+    errors.push("Procurement Business Unit is required.");
+  }
 
   if (errors.length > 0) {
     return {

@@ -19,7 +19,7 @@ export async function createInvoiceService({
 
   try {
 
-    // 🔥 Clean Oracle Payload
+    // Clean Oracle Payload
     const payload = {
       InvoiceNumber: String(invoiceNumber),
       InvoiceDate: invoiceDate,
@@ -32,7 +32,7 @@ export async function createInvoiceService({
       Description: description || ""
     };
 
-    console.log("🚀 Sending to Oracle:", payload);
+    console.log(" Sending to Oracle:", payload);
 
     const response = await callOracleAPI({
       userId,

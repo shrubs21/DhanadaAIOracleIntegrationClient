@@ -23,18 +23,16 @@ export default function Features() {
   ]
 
   return (
-    <section className="mb-16 px-4 bg-white">
+    <section className="mb-12 px-4 bg-white">
       <motion.div
-        className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-6xl mx-auto"
+        className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto"
         initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, margin: "-80px" }}
+        viewport={{ once: true, margin: "-60px" }}
         variants={{
           hidden: {},
           visible: {
-            transition: {
-              staggerChildren: 0.12
-            }
+            transition: { staggerChildren: 0.12 }
           }
         }}
       >
@@ -42,78 +40,84 @@ export default function Features() {
           <motion.div
             key={i}
             variants={{
-              hidden: {
-                opacity: 0,
-                y: 40,
-                scale: 0.96
-              },
+              hidden: { opacity: 0, y: 35, scale: 0.95 },
               visible: {
                 opacity: 1,
                 y: 0,
                 scale: 1,
-                transition: {
-                  duration: 0.6,
-                  ease: [0.22, 1, 0.36, 1] // iOS-style easing
-                }
+                transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] }
               }
             }}
-            className="
-              group
-              relative
-              p-8
-              rounded-2xl
-              cursor-pointer
-              transition-all
-              duration-300
-              hover:scale-[1.02]
-              overflow-hidden
-              backdrop-blur-xl
-            "
+            whileHover={{
+              scale: 1.025,
+              y: -4,
+              transition: { duration: 0.2, ease: 'easeOut' }
+            }}
+            className="group relative p-5 rounded-xl cursor-pointer overflow-hidden"
             style={{
-              background: 'rgba(243, 244, 246, 0.7)', // iOS frosted base
-              border: '1px solid rgba(255, 255, 255, 0.9)',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)'
+              background: 'rgba(243, 244, 246, 0.7)',
+              border: '2px solid #03045E',
+              boxShadow: '0 3px 14px rgba(3,4,94,0.09)',
             }}
           >
-            {/* iOS edge highlight */}
-            <div className="absolute inset-0 rounded-2xl ring-1 ring-white/70 pointer-events-none" />
-
-            {/* Soft glass shine */}
-            <div
-              className="absolute -top-1/2 left-0 w-full h-full opacity-40 pointer-events-none"
+            {/* Hover glow border */}
+            <motion.div
+              className="absolute inset-0 rounded-xl pointer-events-none"
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
               style={{
-                background:
-                  'linear-gradient(135deg, rgba(255,255,255,0.6), transparent)'
+                boxShadow: '0 0 0 2px #03045E, 0 0 20px rgba(3,4,94,0.2)',
               }}
             />
 
-            {/* Blue hover overlay */}
+            {/* Glass shine */}
             <div
-              className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              style={{
-                background:
-                  'linear-gradient(135deg, rgba(3, 4, 94, 0.08), rgba(3, 4, 94, 0.04))'
-              }}
+              className="absolute -top-1/2 left-0 w-full h-full opacity-30 pointer-events-none"
+              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.6), transparent)' }}
             />
 
-            {/* Top glow */}
+            {/* Green top-left corner lines */}
+            <motion.div
+              className="absolute top-0 left-0 h-[3px] pointer-events-none"
+              style={{ background: '#00C853', borderRadius: '0 0 4px 0', width: 40 }}
+              initial={{ scaleX: 0, originX: 0 }}
+              whileInView={{ scaleX: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.12 + 0.35, ease: 'easeOut' }}
+            />
+            <motion.div
+              className="absolute top-0 left-0 w-[3px] pointer-events-none"
+              style={{ background: '#00C853', borderRadius: '0 0 4px 0', height: 28 }}
+              initial={{ scaleY: 0, originY: 0 }}
+              whileInView={{ scaleY: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.12 + 0.35, ease: 'easeOut' }}
+            />
+
+            {/* Hover blue tint */}
             <div
-              className="absolute -top-px left-0 right-0 h-12 rounded-t-2xl opacity-0 group-hover:opacity-40 transition-opacity duration-300"
-              style={{
-                background:
-                  'linear-gradient(180deg, rgba(3, 4, 94, 0.25) 0%, transparent 100%)',
-                filter: 'blur(10px)'
-              }}
+              className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+              style={{ background: 'linear-gradient(135deg, rgba(3,4,94,0.05), transparent)' }}
             />
 
             {/* Content */}
-            <div className="relative z-10">
-              <h3 className="text-xl font-semibold mb-3 text-[#0B132B] group-hover:text-[#03045E] transition-colors duration-300">
-                {it.title}
-              </h3>
-              <p className="text-[#475569] leading-relaxed">
-                {it.desc}
-              </p>
+            <div className="relative z-10 flex items-start gap-4">
+              {/* Number */}
+              <div
+                className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white mt-0.5"
+                style={{ background: '#03045E' }}
+              >
+                {i + 1}
+              </div>
+              <div>
+                <h3 className="text-base font-semibold mb-1.5 text-[#0B132B] group-hover:text-[#03045E] transition-colors duration-300">
+                  {it.title}
+                </h3>
+                <p className="text-sm text-[#475569] leading-relaxed">
+                  {it.desc}
+                </p>
+              </div>
             </div>
           </motion.div>
         ))}
