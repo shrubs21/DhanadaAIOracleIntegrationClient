@@ -1,0 +1,113 @@
+version: "3.9"
+
+services:
+
+  # -------------------- FASTAPI BACKEND --------------------
+  dhanada-python-backend:
+    container_name: dhanada-python-backend
+    build: .
+    restart: always
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    depends_on:
+      dhanada-postgres-db:
+        condition: service_healthy
+      dhanada-redis-cache:
+        condition: service_healthy
+    networks:
+      - dhanada-network
+
+
+  # -------------------- PYTHON AI WORKER --------------------
+  dhanada-ai-worker:
+    container_name: dhanada-ai-worker
+    build: .
+    restart: always
+    command: python -u worker/worker.py
+    env_file:
+      - .env
+    depends_on:
+      dhanada-postgres-db:
+        condition: service_healthy
+      dhanada-redis-cache:
+        condition: service_healthy
+    networks:
+      - dhanada-network
+
+
+  # -------------------- INVOICE AI (LANGGRAPH) --------------------
+  invoice-ai:
+    container_name: oracle-invoice-ai
+    build: .
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      REDIS_HOST: dhanada-redis-cache
+      REDIS_PORT: 6379
+      ENV: production
+      DRY_RUN_MODE: ${DRY_RUN_MODE:-false}
+      OIC_URL: ${OIC_URL}
+      OIC_USERNAME: ${OIC_USERNAME}
+      OIC_PASSWORD: ${OIC_PASSWORD}
+    depends_on:
+      dhanada-redis-cache:
+        condition: service_healthy
+    networks:
+      - dhanada-network
+
+
+  # -------------------- POSTGRES DATABASE --------------------
+  dhanada-postgres-db:
+    image: postgres:15
+    container_name: dhanada-postgres-db
+    restart: always
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: dhanada_user
+      POSTGRES_PASSWORD: dhanada_password
+      POSTGRES_DB: dhanada_ai_db
+    volumes:
+      - dhanada_pg_data:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dhanada_user -d dhanada_ai_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dhanada-network
+
+
+  # -------------------- REDIS CACHE --------------------
+  dhanada-redis-cache:
+    image: redis:7-alpine
+    container_name: dhanada-redis-cache
+    restart: always
+    ports:
+      - "6380:6379"
+    volumes:
+      - dhanada_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - dhanada-network
+
+
+# -------------------- NETWORK --------------------
+networks:
+  dhanada-network:
+    driver: bridge
+
+
+# -------------------- VOLUMES --------------------
+volumes:
+  dhanada_pg_data:
+  dhanada_redis_data:

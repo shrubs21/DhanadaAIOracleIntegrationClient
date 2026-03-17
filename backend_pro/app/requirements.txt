@@ -1,0 +1,47 @@
+# -------------------------------
+# FastAPI Stack
+# -------------------------------
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+
+# -------------------------------
+# Redis
+# -------------------------------
+redis==5.0.4
+
+# -------------------------------
+# Pydantic (LangChain requires v2)
+# -------------------------------
+pydantic==2.8.2
+
+# -------------------------------
+# OpenAI SDK (Compatible Version)
+# -------------------------------
+openai==1.45.0
+
+# IMPORTANT: Fixes "proxies" error
+httpx==0.27.0
+
+# -------------------------------
+# LangChain Ecosystem (Aligned)
+# -------------------------------
+langchain==0.2.16
+langchain-core==0.2.43
+langchain-openai==0.1.25
+langgraph==0.1.19
+
+# -------------------------------
+# Utilities
+# -------------------------------
+python-dotenv==1.0.1
+tqdm==4.67.1
+PyYAML==6.0.2
+requests==2.32.3
+numpy==1.26.4
+
+# -------------------------------
+# Optional (Invoice Processing)
+# -------------------------------
+pandas==2.2.2
+openpyxl==3.1.5
+PyJWT==2.8.0
